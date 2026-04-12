@@ -13,6 +13,18 @@
     // ============================================
     // STREAM SOURCES
     // ============================================
+    const BEIN1_VIDEO = 'https://dt-vod-bc-hd.akamaized.net/9/13/a77b/PT_MUL_HLS_0000147902/media-4/hdntl=exp=1776074067~acl=%2f*~id=ac93227984~data=hdntl,cip%3d85.106.115.121,app%3d241,c%3d8,aid%3dPT_MUL_HLS_0000147902~hmac=e3d50aa750c03c0325ee4346439794ee6b5f482879e20144442c7df9a8cefe81/stream.m3u8';
+    const BEIN1_AUDIO = 'https://dt-vod-bc-hd.akamaized.net/9/13/a77b/PT_MUL_HLS_0000147902/audio/aac/tur/hdntl=exp=1776074984~acl=%2f*~id=ac93227984~data=hdntl,cip%3d85.106.115.121,app%3d241,c%3d8,aid%3dPT_MUL_HLS_0000147902~hmac=a0c8cd40a968b7a4f2df26b031b8a1ae6d4ae071ba43453a9703ecf912dd0987/stream.m3u8';
+
+    // Master manifest'i tarayıcıda blob URL olarak oluştur (backend gerektirmez)
+    function createBeinMasterUrl() {
+        var manifest = '#EXTM3U\n#EXT-X-VERSION:6\n#EXT-X-INDEPENDENT-SEGMENTS\n\n' +
+            '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="Turkish",LANGUAGE="tur",DEFAULT=YES,AUTOSELECT=YES,URI="' + BEIN1_AUDIO + '"\n\n' +
+            '#EXT-X-STREAM-INF:BANDWIDTH=4000000,AUDIO="audio"\n' + BEIN1_VIDEO;
+        var blob = new Blob([manifest], {type: 'application/vnd.apple.mpegurl'});
+        return URL.createObjectURL(blob);
+    }
+
     const STREAMS = {
         test: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
         trt1: 'https://tv-trt1.medya.trt.com.tr/master.m3u8',
@@ -22,9 +34,8 @@
         demo: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
         akamai: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
         apple: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
-        bein1_video: 'https://dt-vod-bc-hd.akamaized.net/9/13/a77b/PT_MUL_HLS_0000147902/media-4/hdntl=exp=1776074067~acl=%2f*~id=ac93227984~data=hdntl,cip%3d85.106.115.121,app%3d241,c%3d8,aid%3dPT_MUL_HLS_0000147902~hmac=e3d50aa750c03c0325ee4346439794ee6b5f482879e20144442c7df9a8cefe81/stream.m3u8',
-        bein1_audio: 'https://dt-vod-bc-hd.akamaized.net/9/13/a77b/PT_MUL_HLS_0000147902/audio/aac/tur/hdntl=exp=1776074984~acl=%2f*~id=ac93227984~data=hdntl,cip%3d85.106.115.121,app%3d241,c%3d8,aid%3dPT_MUL_HLS_0000147902~hmac=a0c8cd40a968b7a4f2df26b031b8a1ae6d4ae071ba43453a9703ecf912dd0987/stream.m3u8',
-        bein1: BACKEND_URL + '/api/bein/master.m3u8?video=' + encodeURIComponent('https://dt-vod-bc-hd.akamaized.net/9/13/a77b/PT_MUL_HLS_0000147902/media-4/hdntl=exp=1776074067~acl=%2f*~id=ac93227984~data=hdntl,cip%3d85.106.115.121,app%3d241,c%3d8,aid%3dPT_MUL_HLS_0000147902~hmac=e3d50aa750c03c0325ee4346439794ee6b5f482879e20144442c7df9a8cefe81/stream.m3u8') + '&audio=' + encodeURIComponent('https://dt-vod-bc-hd.akamaized.net/9/13/a77b/PT_MUL_HLS_0000147902/audio/aac/tur/hdntl=exp=1776074984~acl=%2f*~id=ac93227984~data=hdntl,cip%3d85.106.115.121,app%3d241,c%3d8,aid%3dPT_MUL_HLS_0000147902~hmac=a0c8cd40a968b7a4f2df26b031b8a1ae6d4ae071ba43453a9703ecf912dd0987/stream.m3u8')
+        bein1_video: BEIN1_VIDEO,
+        bein1: createBeinMasterUrl()
     };
 
     // Sunucu yedekleri - AYNI KANAL, FARKLI KAYNAK (bağlantı kesilince geçiş)
@@ -164,7 +175,11 @@
                 String(today.getMonth() + 1).padStart(2, '0') + 
                 String(today.getDate()).padStart(2, '0');
             
-            const resp = await fetch(BACKEND_URL + '/api/livescore/today');
+            // Backend proxy varsa onu kullan, yoksa direkt LiveScore API
+            const liveScoreUrl = BACKEND_URL ? 
+                BACKEND_URL + '/api/livescore/today' : 
+                'https://prod-public-api.livescore.com/v1/api/app/date/soccer/' + dateStr + '/-3?MD=1';
+            const resp = await fetch(liveScoreUrl);
             if (resp.ok) {
                 const data = await resp.json();
                 const stages = data.Stages || [];
@@ -997,7 +1012,10 @@
                 String(today.getMonth() + 1).padStart(2, '0') + 
                 String(today.getDate()).padStart(2, '0');
             
-            const resp = await fetch(BACKEND_URL + '/api/livescore/today');
+            const matchesUrl = BACKEND_URL ? 
+                BACKEND_URL + '/api/livescore/today' : 
+                'https://prod-public-api.livescore.com/v1/api/app/date/soccer/' + dateStr + '/-3?MD=1';
+            const resp = await fetch(matchesUrl);
             if (resp.ok) {
                 const data = await resp.json();
                 const stages = data.Stages || [];
