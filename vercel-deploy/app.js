@@ -3,10 +3,10 @@
     // ============================================
     const BACKEND_URL = (function() {
         const h = window.location.hostname;
-        if (h.includes('vercel')) return '';
+        if (h.includes('vercel')) return 'https://repo-download-2.preview.emergentagent.com';
         if (h.includes('emergentagent')) return window.location.origin;
         if (h === 'localhost' || h === '127.0.0.1') return 'http://localhost:8001';
-        return '';
+        return 'https://repo-download-2.preview.emergentagent.com';
     })();
     const IS_STATIC = !BACKEND_URL;
 
