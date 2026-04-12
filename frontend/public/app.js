@@ -22,7 +22,7 @@
         demo: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
         akamai: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
         apple: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
-        bein1: 'https://dt-vod-bc-hd.akamaized.net/9/13/a77b/PT_MUL_HLS_0000147902/playlist.m3u8?hdntl=exp=1776074067~acl=%2f*~id=ac93227984~data=hdntl,cip%3d85.106.115.121,app%3d241,c%3d8,aid%3dPT_MUL_HLS_0000147902~hmac=e3d50aa750c03c0325ee4346439794ee6b5f482879e20144442c7df9a8cefe81'
+        bein1: 'https://dt-vod-bc-hd.akamaized.net/9/13/a77b/PT_MUL_HLS_0000147902/media-4/hdntl=exp=1776074067~acl=%2f*~id=ac93227984~data=hdntl,cip%3d85.106.115.121,app%3d241,c%3d8,aid%3dPT_MUL_HLS_0000147902~hmac=e3d50aa750c03c0325ee4346439794ee6b5f482879e20144442c7df9a8cefe81/stream.m3u8'
     };
 
     // Sunucu yedekleri - AYNI KANAL, FARKLI KAYNAK (bağlantı kesilince geçiş)
@@ -33,7 +33,11 @@
         trthaber: [STREAMS.trthaber, STREAMS.trthaber, STREAMS.trthaber],
         trtspor: [STREAMS.trtspor, STREAMS.akamai, STREAMS.test],
         tv8: [STREAMS.tv8, STREAMS.tv8, STREAMS.tv8],
-        bein1: [STREAMS.bein1, STREAMS.bein1, STREAMS.bein1]
+        bein1: [
+            STREAMS.bein1,
+            STREAMS.bein1.replace('media-4', 'media-1'),
+            STREAMS.bein1.replace('media-4', 'media-2')
+        ]
     };
 
     const CHANNELS = {
