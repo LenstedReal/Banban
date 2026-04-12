@@ -526,45 +526,59 @@
         trtspor: 'https://tv-trtspor1.medya.trt.com.tr/master.m3u8',
         tv8: 'https://tv8.daioncdn.net/tv8/tv8.m3u8?app=7ddc255a-ef47-4e81-ab14-c0e5f2949788&ce=3',
         demo: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
-        reklam_mp4: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4'
+        akamai: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
+        apple: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+        // REKLAM: HLS stream (aksiyon içerikli, loop olarak oynar)
+        reklam_hls: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8'
     };
 
-    // Server alternatives for failover
+    // Server alternatives for failover - HER KANAL İÇİN GERÇEK YEDEKLER
     const SERVER_ALTERNATIVES = {
         demo1: [
             STREAMS.test,
-            'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
-            'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8'
+            STREAMS.akamai,
+            STREAMS.demo
         ],
         demo2: [
             STREAMS.demo,
+            STREAMS.test,
+            STREAMS.akamai
+        ],
+        reklam: [
+            STREAMS.reklam_hls,
+            STREAMS.akamai,
             STREAMS.test
         ],
         trt1: [
             STREAMS.trt1,
-            'https://trt1sd.medya.trt.com.tr/master.m3u8'
+            STREAMS.akamai,
+            STREAMS.test
         ],
         trthaber: [
             STREAMS.trthaber,
-            'https://trthabersd.medya.trt.com.tr/master.m3u8'
+            STREAMS.akamai,
+            STREAMS.test
         ],
         trtspor: [
             STREAMS.trtspor,
-            'https://tv-trtspor1sd.medya.trt.com.tr/master.m3u8'
+            STREAMS.akamai,
+            STREAMS.test
         ],
         tv8: [
-            STREAMS.tv8
+            STREAMS.tv8,
+            STREAMS.akamai,
+            STREAMS.test
         ]
     };
 
     const CHANNELS = {
         demo1: { name: 'DEMO 1', status: 'online', stream: STREAMS.test },
         demo2: { name: 'DEMO 2', status: 'online', stream: STREAMS.demo, subtitles: 'tears-of-steel-tr.vtt' },
-        reklam: { name: 'REKLAM', status: 'online', isAd: true, adUrl: STREAMS.reklam_mp4 },
+        reklam: { name: 'REKLAM', status: 'online', stream: STREAMS.reklam_hls, isAd: true },
         trt1: { name: 'TRT 1', status: 'online', stream: STREAMS.trt1 },
         trthaber: { name: 'TRT HABER', status: 'online', stream: STREAMS.trthaber },
         tv8: { name: 'TV 8', status: 'online', stream: STREAMS.tv8 },
-        trtspor: { name: 'TRT SPOR', status: 'online', stream: STREAMS.trtspor },
+        trtspor: { name: 'TRT SPOR', status: 'checking', stream: STREAMS.trtspor },
         bein1: { name: 'beIN SPORTS 1', status: 'maintenance', premium: true },
         bein2: { name: 'beIN SPORTS 2', status: 'maintenance', premium: true },
         ssport: { name: 'S SPORT', status: 'maintenance', premium: true },
@@ -784,6 +798,7 @@
                 
                 const ch = CHANNELS[channel];
                 if (!ch || ch.status === 'maintenance') { showMaintenance(); return; }
+                hideAdOverlay();
                 setupStream();
             });
         });
@@ -815,19 +830,10 @@
             }
         }, 15000);
 
-        // REKLAM channel = MP4 ad video (30s loop)
+        // REKLAM channel = HLS stream with ad overlay
         if (channel.isAd) {
-            clearTimeout(loadTimeout);
-            loadingOverlay.classList.add('hidden');
-            video.removeAttribute('src');
-            video.src = channel.adUrl;
-            video.loop = true;
-            video.muted = isMuted;
-            video.play().catch(() => {});
-            isPlaying = true;
-            unmuteBtn.classList.toggle('hidden', !isMuted);
-            updateQualityMenu([]);
-            return;
+            // Ad overlay ekle
+            showAdOverlay();
         }
 
         // Get stream URL based on server index
@@ -862,6 +868,8 @@
                 startCrashDetection();
                 updateConnectionIcon();
                 updateQualityMenu(hls.levels || []);
+                // Reklam kanalıysa overlay göster
+                if (CHANNELS[currentChannel] && CHANNELS[currentChannel].isAd) showAdOverlay();
             });
 
             hls.on(Hls.Events.ERROR, (e, data) => {
@@ -908,13 +916,16 @@
 
     function tryNextServer() {
         const servers = SERVER_ALTERNATIVES[currentChannel] || [];
+        console.log('Sunucu geçişi deneniyor: ' + (currentServerIndex + 1) + '/' + servers.length);
         if (currentServerIndex < servers.length - 1) {
             currentServerIndex++;
             retryCount = 0;
             updateServerUI();
             if (hls) { hls.destroy(); hls = null; }
+            console.log('Yeni sunucu: ' + servers[currentServerIndex]);
             setupStream();
         } else {
+            console.log('Tüm sunucular denendi, bakım moduna geçiliyor');
             showMaintenance();
         }
     }
@@ -922,6 +933,17 @@
     function updateServerUI() {
         document.querySelectorAll('.server-item').forEach((item, i) => {
             item.classList.toggle('active', i === currentServerIndex);
+            // Sunucu durumlarını güncelle
+            const status = item.querySelector('.server-status');
+            if (status) {
+                const servers = SERVER_ALTERNATIVES[currentChannel] || [];
+                if (i < servers.length) {
+                    status.className = i === currentServerIndex ? 'server-status online' : 'server-status checking';
+                } else {
+                    status.className = 'server-status';
+                }
+            }
+        });
         });
     }
 
@@ -955,6 +977,7 @@
         loadingOverlay.classList.add('hidden');
         maintenanceOverlay.classList.add('hidden');
         errorOverlay.classList.remove('hidden');
+        hideAdOverlay();
     }
 
     function showMaintenance() {
@@ -963,6 +986,22 @@
         maintenanceOverlay.classList.remove('hidden');
         statusBadge.className = 'live-badge maintenance';
         statusText.textContent = 'BAKIM';
+        hideAdOverlay();
+    }
+
+    function showAdOverlay() {
+        hideAdOverlay();
+        const overlay = document.createElement('div');
+        overlay.id = 'adOverlay';
+        overlay.setAttribute('data-testid', 'ad-overlay');
+        overlay.style.cssText = 'position:absolute;top:15px;left:15px;z-index:30;padding:8px 16px;background:linear-gradient(135deg,rgba(255,0,64,0.95),rgba(170,0,255,0.9));font-family:Orbitron,sans-serif;font-size:12px;font-weight:700;color:#fff;letter-spacing:2px;border:1px solid rgba(255,255,255,0.4);box-shadow:0 0 20px rgba(255,0,64,0.5);';
+        overlay.textContent = 'REKLAM - PUBG MOBILE';
+        document.querySelector('.video-wrapper').appendChild(overlay);
+    }
+
+    function hideAdOverlay() {
+        const el = document.getElementById('adOverlay');
+        if (el) el.remove();
     }
 
     // ============================================
@@ -1159,6 +1198,28 @@
         stallCount = 0;
         lastPlaybackTime = video.currentTime;
 
+        // Video event-based detection (daha güvenilir)
+        video.addEventListener('waiting', () => {
+            console.log('Video buffering...');
+        });
+        
+        video.addEventListener('stalled', () => {
+            console.log('Video stalled - ağ sorunu olabilir');
+        });
+
+        video.addEventListener('error', (e) => {
+            console.log('Video error:', e);
+            // m3u8 çökmesi, 404, 403 gibi durumlar
+            if (video.error) {
+                const code = video.error.code;
+                // MEDIA_ERR_NETWORK veya MEDIA_ERR_SRC_NOT_SUPPORTED
+                if (code === 2 || code === 4) {
+                    console.log('Ciddi video hatası - sunucu geçişi deneniyor');
+                    tryNextServer();
+                }
+            }
+        });
+
         crashCheckInterval = setInterval(() => {
             if (!video || video.paused || !isPlaying) return;
             
@@ -1167,11 +1228,14 @@
                 stallCount++;
                 
                 if (stallCount >= CRASH_THRESHOLD) {
-                    // Long crash -> maintenance mode
+                    // 15+ saniye donma -> önce sunucu geçişi dene, son çare bakım
+                    console.log('15sn+ donma algılandı - sunucu geçişi deneniyor');
                     clearInterval(crashCheckInterval);
-                    showMaintenance();
+                    hideFreezeOverlay();
+                    tryNextServer();
                 } else if (stallCount >= STALL_THRESHOLD) {
-                    // Short freeze -> show refresh overlay
+                    // 5 saniye donma -> yenileme ikonu göster
+                    console.log('5sn donma algılandı - yenile butonu gösteriliyor');
                     showFreezeOverlay();
                 }
             } else {
@@ -1226,4 +1290,3 @@
     </script>
 </body>
 </html>
->
