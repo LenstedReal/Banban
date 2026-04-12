@@ -102,6 +102,18 @@
         .channel-badge::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255, 0, 170, 0.3), transparent); animation: shimmer 3s infinite; }
         @keyframes shimmer { 0% { left: -100%; } 100% { left: 100%; } }
 
+        /* BİLDİRİM BUTONU */
+        .notif-toggle {
+            display: flex; align-items: center; gap: 8px; cursor: pointer;
+            background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 6px 14px; font-family: 'Share Tech Mono', monospace; font-size: 10px;
+            color: var(--text-dim); transition: all 0.3s; letter-spacing: 1px;
+        }
+        .notif-toggle:hover { border-color: var(--cyan); color: var(--cyan); }
+        .notif-toggle.active { border-color: var(--green); color: var(--green); background: rgba(0, 255, 136, 0.1); }
+        .notif-toggle svg { width: 16px; height: 16px; fill: currentColor; }
+        .notif-status { font-size: 9px; opacity: 0.7; }
+
         /* KANAL SECİCİ */
         .channel-selector { background: var(--bg-card); border-bottom: 1px solid rgba(255, 0, 170, 0.2); padding: 12px 20px; }
         .channel-tabs { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; max-width: 1200px; margin: 0 auto; }
@@ -382,6 +394,11 @@
                     </div>
                 </div>
                 <div class="header-right">
+                    <button class="notif-toggle" id="notifToggle" onclick="toggleNotifications()" data-testid="notif-toggle" title="Maç bildirimleri">
+                        <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+                        <span>BİLDİRİM</span>
+                        <span class="notif-status">KAPALI</span>
+                    </button>
                     <div class="channel-badge" id="leagueBadge" data-testid="league-badge">SÜPER LİG</div>
                 </div>
             </div>

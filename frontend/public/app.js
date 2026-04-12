@@ -70,6 +70,8 @@
     let httpPollingInterval = null;
     let qualityMenuOpen = false;
     let hasLiveScoreData = false; // LiveScore API'den gerçek veri geldi mi?
+    let lastNotifiedStatus = ''; // Son bildirim gönderilen maç durumu
+    let notificationsEnabled = false; // Bildirim izni var mı?
 
     const video = document.getElementById('video');
     const loadingOverlay = document.getElementById('loadingOverlay');
@@ -254,7 +256,130 @@
             statusText.textContent = 'CANLI';
             statusBadge.className = 'live-badge';
         }
+
+        // Bildirim gönder - maç başladı, gol oldu, devre arası, maç bitti
+        sendMatchNotification(match, status);
     }
+
+    // ============================================
+    // BİLDİRİM SİSTEMİ
+    // ============================================
+    function requestNotificationPermission() {
+        if (!('Notification' in window)) return;
+        if (Notification.permission === 'granted') {
+            notificationsEnabled = true;
+            updateNotifUI(true);
+        } else if (Notification.permission !== 'denied') {
+            Notification.requestPermission().then(function(perm) {
+                notificationsEnabled = (perm === 'granted');
+                updateNotifUI(notificationsEnabled);
+            });
+        }
+    }
+
+    function updateNotifUI(enabled) {
+        var btn = document.getElementById('notifToggle');
+        if (!btn) return;
+        if (enabled) {
+            btn.classList.add('active');
+            btn.querySelector('.notif-status').textContent = 'AÇIK';
+        } else {
+            btn.classList.remove('active');
+            btn.querySelector('.notif-status').textContent = 'KAPALI';
+        }
+    }
+
+    function toggleNotifications() {
+        if (!('Notification' in window)) {
+            alert('Bu tarayıcı bildirimleri desteklemiyor.');
+            return;
+        }
+        if (Notification.permission === 'denied') {
+            alert('Bildirim izni reddedildi. Tarayıcı ayarlarından izin verin.');
+            return;
+        }
+        if (!notificationsEnabled) {
+            Notification.requestPermission().then(function(perm) {
+                notificationsEnabled = (perm === 'granted');
+                updateNotifUI(notificationsEnabled);
+                if (notificationsEnabled) {
+                    sendNotification('Bildirimler Açıldı', 'Maç başladığında, gol olduğunda bildirim alacaksınız!', 'info');
+                }
+            });
+        } else {
+            notificationsEnabled = false;
+            updateNotifUI(false);
+        }
+    }
+
+    function sendMatchNotification(match, status) {
+        if (!notificationsEnabled) return;
+        var t1 = match.team1 || '---';
+        var t2 = match.team2 || '---';
+        var s1 = match.score1 || 0;
+        var s2 = match.score2 || 0;
+        var key = t1 + '-' + t2 + '-' + status + '-' + s1 + '-' + s2;
+        
+        // Aynı bildirim tekrar gönderilmesin
+        if (key === lastNotifiedStatus) return;
+        
+        var title = '';
+        var body = '';
+        var shouldNotify = false;
+        
+        // Maç canlı olarak başladı
+        if ((status.includes("'") || status === 'CANLI' || status === '1. YARI') && lastNotifiedStatus.includes('MAÇ ÖNÜ')) {
+            title = 'MAÇ BAŞLADI!';
+            body = t1 + ' vs ' + t2 + ' maçı başladı!';
+            shouldNotify = true;
+        }
+        // Gol oldu (skor değişti)
+        if (lastNotifiedStatus) {
+            var prevScoreMatch = lastNotifiedStatus.match(/-(\d+)-(\d+)$/);
+            if (prevScoreMatch) {
+                var prevS1 = parseInt(prevScoreMatch[1]);
+                var prevS2 = parseInt(prevScoreMatch[2]);
+                if ((s1 > prevS1 || s2 > prevS2) && (status.includes("'") || status === 'CANLI' || status === '1. YARI' || status === '2. YARI')) {
+                    title = 'GOOOL!';
+                    body = t1 + ' ' + s1 + ' - ' + s2 + ' ' + t2;
+                    shouldNotify = true;
+                }
+            }
+        }
+        // Devre arası
+        if (status === 'DEVRE ARASI' && !lastNotifiedStatus.includes('DEVRE ARASI')) {
+            title = 'DEVRE ARASI';
+            body = t1 + ' ' + s1 + ' - ' + s2 + ' ' + t2;
+            shouldNotify = true;
+        }
+        // Maç bitti
+        if ((status === 'MAÇ SONU' || status === 'FT') && !lastNotifiedStatus.includes('MAÇ SONU') && !lastNotifiedStatus.includes('FT')) {
+            title = 'MAÇ BİTTİ';
+            body = t1 + ' ' + s1 + ' - ' + s2 + ' ' + t2 + ' - Maç sona erdi!';
+            shouldNotify = true;
+        }
+
+        lastNotifiedStatus = key;
+        if (shouldNotify) sendNotification(title, body, 'match');
+    }
+
+    function sendNotification(title, body, type) {
+        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+        try {
+            var n = new Notification(title, {
+                body: body,
+                icon: 'https://www.google.com/s2/favicons?domain=banbansports.com&sz=128',
+                badge: 'https://www.google.com/s2/favicons?domain=banbansports.com&sz=64',
+                tag: 'banban-' + type,
+                renotify: true,
+                silent: false
+            });
+            n.onclick = function() { window.focus(); n.close(); };
+            setTimeout(function() { n.close(); }, 8000);
+        } catch(e) {}
+    }
+
+    window.toggleNotifications = toggleNotifications;
 
     // ============================================
     // CHANNEL SELECTOR
@@ -309,13 +434,13 @@
             }
         }, 15000);
 
-        // REKLAM channel = Lokal video (20sn loop)
+        // REKLAM channel = Lokal video (20sn, bittikten sonra Play Store'a yönlendir)
         if (channel.isAd) {
             clearTimeout(loadTimeout);
             loadingOverlay.classList.add('hidden');
             if (hls) { hls.destroy(); hls = null; }
             video.removeAttribute('src');
-            video.loop = true;
+            video.loop = false;
             video.muted = isMuted;
             // WebM for wider codec support, MP4 as fallback
             var cacheBust = '?v=' + Date.now();
@@ -324,6 +449,10 @@
                 if (video.src.includes('.webm')) {
                     video.src = 'reklam.mp4' + cacheBust;
                 }
+            };
+            // Reklam bitince Play Store PUBG Mobile'a yönlendir
+            video.onended = function() {
+                window.open('https://play.google.com/store/apps/details?id=com.tencent.ig', '_blank');
             };
             video.load();
             video.play().catch(() => {});
@@ -1019,6 +1148,12 @@
         fetchLiveScore();
         updateConnectionIcon();
         fetchAllMatches();
+        
+        // Bildirim sistemi başlat
+        if ('Notification' in window && Notification.permission === 'granted') {
+            notificationsEnabled = true;
+            updateNotifUI(true);
+        }
         
         // Sunucu event listeners
         document.querySelectorAll('.server-item').forEach(item => {
