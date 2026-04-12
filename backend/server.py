@@ -492,6 +492,31 @@ async def discover_bein():
     except Exception as e:
         return {"error": str(e), "accessible": False}
 
+
+# ============================================
+# beIN SPORTS Custom Master Manifest
+# ============================================
+@api_router.get("/bein/master.m3u8")
+async def bein_master_manifest(video: str, audio: str):
+    """Generate a custom HLS master manifest combining separate video and audio tracks"""
+    manifest = f"""#EXTM3U
+#EXT-X-VERSION:6
+#EXT-X-INDEPENDENT-SEGMENTS
+
+#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="Turkish",LANGUAGE="tur",DEFAULT=YES,AUTOSELECT=YES,URI="{audio}"
+
+#EXT-X-STREAM-INF:BANDWIDTH=4000000,AUDIO="audio"
+{video}
+"""
+    return Response(
+        content=manifest.strip(),
+        media_type="application/vnd.apple.mpegurl",
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Cache-Control": "no-cache"
+        }
+    )
+
 # ============================================
 # Root
 # ============================================
