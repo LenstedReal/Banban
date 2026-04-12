@@ -10,7 +10,7 @@ import json
 from datetime import datetime
 
 class BanbansportsAPITester:
-    def __init__(self, base_url="https://cyberpunk-canli-tv.preview.emergentagent.com"):
+    def __init__(self, base_url="https://repo-download-2.preview.emergentagent.com"):
         self.base_url = base_url
         self.tests_run = 0
         self.tests_passed = 0
@@ -96,6 +96,15 @@ class BanbansportsAPITester:
             expected_fields=["team1", "team2", "status"]
         )
 
+    def test_livescore_today(self):
+        """Test /api/livescore/today endpoint (LiveScore proxy)"""
+        return self.run_test(
+            "LiveScore Today API",
+            "GET",
+            "/livescore/today",
+            expected_fields=["Stages"]
+        )
+
     def test_channels(self):
         """Test /api/channels endpoint"""
         success, data = self.run_test(
@@ -156,6 +165,7 @@ def main():
     # Test all endpoints
     tester.test_root_endpoint()
     tester.test_live_scores()
+    tester.test_livescore_today()
     tester.test_channels()
     tester.test_stream_health()
     tester.test_websocket_endpoint()

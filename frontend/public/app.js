@@ -4,7 +4,7 @@
     const BACKEND_URL = (function() {
         const h = window.location.hostname;
         if (h.includes('vercel')) return '';
-        if (h.includes('emergentagent')) return 'https://cyberpunk-canli-tv.preview.emergentagent.com';
+        if (h.includes('emergentagent')) return window.location.origin;
         if (h === 'localhost' || h === '127.0.0.1') return 'http://localhost:8001';
         return '';
     })();
@@ -69,6 +69,7 @@
     let lastPlaybackTime = 0;
     let httpPollingInterval = null;
     let qualityMenuOpen = false;
+    let hasLiveScoreData = false; // LiveScore API'den gerçek veri geldi mi?
 
     const video = document.getElementById('video');
     const loadingOverlay = document.getElementById('loadingOverlay');
@@ -96,7 +97,12 @@
         ws.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                if (data.type === 'score_update') updateScoreboard(data);
+                if (data.type === 'score_update') {
+                    // LiveScore'dan gerçek veri varsa, WebSocket'ten gelen default veriyi atla
+                    const isDefault = (data.team1 === 'TÜRKİYE' && data.team2 === 'ROMANYA');
+                    if (isDefault && hasLiveScoreData) return;
+                    updateScoreboard(data);
+                }
             } catch (e) {}
         };
         ws.onclose = () => {
@@ -202,7 +208,7 @@
                     }
                 }
                 
-                if (bestMatch) { updateScoreboard(bestMatch); return; }
+                if (bestMatch) { hasLiveScoreData = true; updateScoreboard(bestMatch); return; }
             }
         } catch (e) {
             console.log('LiveScore API hatası:', e);
@@ -303,7 +309,7 @@
             }
         }, 15000);
 
-        // REKLAM channel = Lokal MP4 video (30sn loop)
+        // REKLAM channel = Lokal video (20sn loop)
         if (channel.isAd) {
             clearTimeout(loadTimeout);
             loadingOverlay.classList.add('hidden');
@@ -311,7 +317,14 @@
             video.removeAttribute('src');
             video.loop = true;
             video.muted = isMuted;
-            video.src = 'reklam.mp4';
+            // WebM for wider codec support, MP4 as fallback
+            var cacheBust = '?v=' + Date.now();
+            video.src = 'reklam.webm' + cacheBust;
+            video.onerror = function() {
+                if (video.src.includes('.webm')) {
+                    video.src = 'reklam.mp4' + cacheBust;
+                }
+            };
             video.load();
             video.play().catch(() => {});
             isPlaying = true;
