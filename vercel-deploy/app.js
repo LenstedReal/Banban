@@ -21,7 +21,8 @@
         tv8: 'https://tv8.daioncdn.net/tv8/tv8.m3u8?app=7ddc255a-ef47-4e81-ab14-c0e5f2949788&ce=3',
         demo: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
         akamai: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
-        apple: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8'
+        apple: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+        bein1: 'https://dt-vod-bc-hd.akamaized.net/9/13/a77b/PT_MUL_HLS_0000147902/media-4/hdntl=exp=1776074067~acl=%2f*~id=ac93227984~data=hdntl,cip%3d85.106.115.121,app%3d241,c%3d8,aid%3dPT_MUL_HLS_0000147902~hmac=e3d50aa750c03c0325ee4346439794ee6b5f482879e20144442c7df9a8cefe81/stream.m3u8'
     };
 
     // Sunucu yedekleri - AYNI KANAL, FARKLI KAYNAK (bağlantı kesilince geçiş)
@@ -31,7 +32,8 @@
         trt1: [STREAMS.trt1, STREAMS.trt1, STREAMS.trt1],
         trthaber: [STREAMS.trthaber, STREAMS.trthaber, STREAMS.trthaber],
         trtspor: [STREAMS.trtspor, STREAMS.akamai, STREAMS.test],
-        tv8: [STREAMS.tv8, STREAMS.tv8, STREAMS.tv8]
+        tv8: [STREAMS.tv8, STREAMS.tv8, STREAMS.tv8],
+        bein1: [STREAMS.bein1, STREAMS.bein1, STREAMS.bein1]
     };
 
     const CHANNELS = {
@@ -42,7 +44,7 @@
         trthaber: { name: 'TRT HABER', status: 'online', stream: STREAMS.trthaber },
         tv8: { name: 'TV 8', status: 'online', stream: STREAMS.tv8 },
         trtspor: { name: 'TRT SPOR', status: 'checking', stream: STREAMS.trtspor },
-        bein1: { name: 'beIN SPORTS 1', status: 'maintenance', premium: true },
+        bein1: { name: 'beIN SPORTS 1', status: 'online', stream: STREAMS.bein1 },
         bein2: { name: 'beIN SPORTS 2', status: 'maintenance', premium: true },
         ssport: { name: 'S SPORT', status: 'maintenance', premium: true },
         gstv: { name: 'GS TV', status: 'maintenance' },
