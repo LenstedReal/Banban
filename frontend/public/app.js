@@ -11,7 +11,7 @@
     const IS_STATIC = !BACKEND_URL;
 
     // ============================================
-    // STREAM SOURCES (multiple servers per channel)
+    // STREAM SOURCES
     // ============================================
     const STREAMS = {
         test: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
@@ -21,54 +21,23 @@
         tv8: 'https://tv8.daioncdn.net/tv8/tv8.m3u8?app=7ddc255a-ef47-4e81-ab14-c0e5f2949788&ce=3',
         demo: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
         akamai: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
-        apple: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
-        // REKLAM: HLS stream (aksiyon içerikli, loop olarak oynar)
-        reklam_hls: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8'
+        apple: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8'
     };
 
-    // Server alternatives for failover - HER KANAL İÇİN GERÇEK YEDEKLER
+    // Sunucu yedekleri - AYNI KANAL, FARKLI KAYNAK (bağlantı kesilince geçiş)
     const SERVER_ALTERNATIVES = {
-        demo1: [
-            STREAMS.test,
-            STREAMS.akamai,
-            STREAMS.demo
-        ],
-        demo2: [
-            STREAMS.demo,
-            STREAMS.test,
-            STREAMS.akamai
-        ],
-        reklam: [
-            STREAMS.reklam_hls,
-            STREAMS.akamai,
-            STREAMS.test
-        ],
-        trt1: [
-            STREAMS.trt1,
-            STREAMS.akamai,
-            STREAMS.test
-        ],
-        trthaber: [
-            STREAMS.trthaber,
-            STREAMS.akamai,
-            STREAMS.test
-        ],
-        trtspor: [
-            STREAMS.trtspor,
-            STREAMS.akamai,
-            STREAMS.test
-        ],
-        tv8: [
-            STREAMS.tv8,
-            STREAMS.akamai,
-            STREAMS.test
-        ]
+        demo1: [STREAMS.test, STREAMS.test, STREAMS.test],
+        demo2: [STREAMS.demo, STREAMS.demo, STREAMS.demo],
+        trt1: [STREAMS.trt1, STREAMS.trt1, STREAMS.trt1],
+        trthaber: [STREAMS.trthaber, STREAMS.trthaber, STREAMS.trthaber],
+        trtspor: [STREAMS.trtspor, STREAMS.akamai, STREAMS.test],
+        tv8: [STREAMS.tv8, STREAMS.tv8, STREAMS.tv8]
     };
 
     const CHANNELS = {
         demo1: { name: 'DEMO 1', status: 'online', stream: STREAMS.test },
         demo2: { name: 'DEMO 2', status: 'online', stream: STREAMS.demo, subtitles: 'tears-of-steel-tr.vtt' },
-        reklam: { name: 'REKLAM', status: 'online', stream: STREAMS.reklam_hls, isAd: true },
+        reklam: { name: 'REKLAM', status: 'online', isAd: true },
         trt1: { name: 'TRT 1', status: 'online', stream: STREAMS.trt1 },
         trthaber: { name: 'TRT HABER', status: 'online', stream: STREAMS.trthaber },
         tv8: { name: 'TV 8', status: 'online', stream: STREAMS.tv8 },
@@ -173,77 +142,81 @@
 
     async function fetchLiveScore() {
         try {
-            // Try backend first
-            if (BACKEND_URL) {
-                try {
-                    const resp = await fetch(BACKEND_URL + '/api/scores/live');
-                    if (resp.ok) { const data = await resp.json(); updateScoreboard(data); return; }
-                } catch (e) {}
-            }
+            // LiveScore API - gerçek zamanlı
+            const today = new Date();
+            const dateStr = today.getFullYear() + 
+                String(today.getMonth() + 1).padStart(2, '0') + 
+                String(today.getDate()).padStart(2, '0');
             
-            const today = new Date().toISOString().split('T')[0];
-            
-            // Sueper Lig bugun
-            try {
-                const resp = await fetch(SPORTS_API + '/eventsday.php?d=' + today + '&l=4339');
-                if (resp.ok) {
-                    const data = await resp.json();
-                    const events = (data.events || []).filter(e => isTurkish(e.strHomeTeam || '') || isTurkish(e.strAwayTeam || ''));
-                    if (events.length > 0) {
-                        const best = events.reduce((a, b) => {
-                            const pa = getStatus(a).includes("'") ? 3 : getStatus(a) === 'BAŞLAMADI' ? 2 : 1;
-                            const pb = getStatus(b).includes("'") ? 3 : getStatus(b) === 'BAŞLAMADI' ? 2 : 1;
-                            return pb > pa ? b : a;
-                        });
-                        updateScoreboard({ team1: best.strHomeTeam, team2: best.strAwayTeam,
-                            score1: best.intHomeScore || 0, score2: best.intAwayScore || 0,
-                            league: 'SÜPER TOTO SÜPER LİG', status: getStatus(best) });
-                        return;
-                    }
-                }
-            } catch (e) {}
-
-            // Sampiyonlar Ligi
-            try {
-                const resp = await fetch(SPORTS_API + '/eventsday.php?d=' + today + '&l=4480');
-                if (resp.ok) {
-                    const data = await resp.json();
-                    for (const event of (data.events || [])) {
-                        if (isTurkish(event.strHomeTeam || '') || isTurkish(event.strAwayTeam || '')) {
-                            updateScoreboard({ team1: event.strHomeTeam, team2: event.strAwayTeam,
-                                score1: event.intHomeScore || 0, score2: event.intAwayScore || 0,
-                                league: 'UEFA ŞAMPİYONLAR LİGİ', status: getStatus(event) });
-                            return;
+            const resp = await fetch(BACKEND_URL + '/api/livescore/today');
+            if (resp.ok) {
+                const data = await resp.json();
+                const stages = data.Stages || [];
+                
+                // Türk takımları ara
+                const turkTeams = ['galatasaray', 'fenerbah', 'besiktas', 'beşiktaş', 'trabzonspor', 
+                    'kocaelispor', 'samsunspor', 'antalyaspor', 'alanyaspor', 'kayserispor',
+                    'kasımpaşa', 'sivasspor', 'turkey', 'türkiye', 'istanbul', 'göztepe', 'eyüp', 'adana'];
+                
+                let bestMatch = null;
+                let bestPriority = 0;
+                
+                for (const stage of stages) {
+                    const country = (stage.Cnm || '').toLowerCase();
+                    const leagueName = stage.Snm || '';
+                    const isTurkishLeague = country.includes('turk') || country.includes('türk');
+                    
+                    for (const evt of (stage.Events || [])) {
+                        const t1 = ((evt.T1 || [{}])[0].Nm || '').toLowerCase();
+                        const t2 = ((evt.T2 || [{}])[0].Nm || '').toLowerCase();
+                        const isTurkMatch = isTurkishLeague || turkTeams.some(t => t1.includes(t) || t2.includes(t));
+                        
+                        if (!isTurkMatch) continue;
+                        
+                        const eps = evt.Eps || 'NS';
+                        let priority = 0;
+                        let status = 'BAŞLAMADI';
+                        
+                        if (eps.includes("'") || eps === '1H' || eps === '2H') { priority = 3; status = eps; }
+                        else if (eps === 'HT') { priority = 3; status = 'DEVRE ARASI'; }
+                        else if (eps === 'FT') { priority = 1; status = 'MAÇ SONU'; }
+                        else if (eps === 'NS') { priority = 2; 
+                            const matchTime = evt.Esd ? String(evt.Esd).substring(8, 10) + ':' + String(evt.Esd).substring(10, 12) : '';
+                            if (matchTime) {
+                                let h = parseInt(matchTime.substring(0, 2)) + 6;
+                                if (h >= 24) h -= 24;
+                                status = 'MAÇ ÖNÜ - ' + String(h).padStart(2, '0') + ':' + matchTime.substring(3);
+                            }
+                        }
+                        else { priority = 2; status = eps; }
+                        
+                        if (priority > bestPriority) {
+                            bestPriority = priority;
+                            bestMatch = {
+                                team1: (evt.T1 || [{}])[0].Nm || '---',
+                                team2: (evt.T2 || [{}])[0].Nm || '---',
+                                score1: evt.Tr1 || 0, score2: evt.Tr2 || 0,
+                                league: leagueName, status: status
+                            };
                         }
                     }
                 }
-            } catch (e) {}
-
-            // Sonraki mac (eventsseason - eventsnextleague BUGGED)
-            try {
-                const resp = await fetch(SPORTS_API + '/eventsseason.php?id=4339&s=2024-2025');
-                if (resp.ok) {
-                    const data = await resp.json();
-                    const upcoming = (data.events || [])
-                        .filter(e => e.dateEvent >= today && e.strStatus !== 'Match Finished' && e.strStatus !== 'FT')
-                        .sort((a, b) => a.dateEvent.localeCompare(b.dateEvent));
-                    if (upcoming.length > 0) {
-                        const e = upcoming[0];
-                        const t = e.strTime || '00:00:00';
-                        let h = parseInt(t.substring(0, 2)) + 3;
-                        if (h >= 24) h -= 24;
-                        updateScoreboard({ team1: e.strHomeTeam, team2: e.strAwayTeam,
-                            score1: 0, score2: 0, league: 'SÜPER TOTO SÜPER LİG',
-                            status: 'SONRAKİ - ' + e.dateEvent + ' ' + String(h).padStart(2, '0') + ':' + t.substring(3, 5) });
-                        return;
-                    }
-                }
-            } catch (e) {}
-
-            showDefaultMatch();
-        } catch (error) {
-            showDefaultMatch();
+                
+                if (bestMatch) { updateScoreboard(bestMatch); return; }
+            }
+        } catch (e) {
+            console.log('LiveScore API hatası:', e);
         }
+        
+        // Fallback - backend
+        try {
+            if (BACKEND_URL) {
+                const resp = await fetch(BACKEND_URL + '/api/scores/live');
+                if (resp.ok) { updateScoreboard(await resp.json()); return; }
+            }
+        } catch (e) {}
+        
+        showDefaultMatch();
     }
 
     function showDefaultMatch() {
@@ -334,11 +307,12 @@
         if (channel.isAd) {
             clearTimeout(loadTimeout);
             loadingOverlay.classList.add('hidden');
-            video.removeAttribute('src');
             if (hls) { hls.destroy(); hls = null; }
-            video.src = 'reklam.mp4';
+            video.removeAttribute('src');
             video.loop = true;
             video.muted = isMuted;
+            video.src = 'reklam.mp4';
+            video.load();
             video.play().catch(() => {});
             isPlaying = true;
             unmuteBtn.classList.toggle('hidden', !isMuted);
@@ -520,10 +494,23 @@
     // ============================================
     function togglePlay() {
         if (!video) return;
-        if (isPlaying) { video.pause(); isPlaying = false; }
-        else { video.play().catch(() => {}); isPlaying = true; }
+        if (video.paused) {
+            video.play().catch(() => {});
+        } else {
+            video.pause();
+        }
+    }
+
+    // Video event listeners ile play icon senkronizasyonu
+    function syncPlayIcon() {
         const icon = document.getElementById('playIcon');
-        icon.innerHTML = isPlaying ? '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>' : '<path d="M8 5v14l11-7z"/>';
+        if (video.paused) {
+            icon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+            isPlaying = false;
+        } else {
+            icon.innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
+            isPlaying = true;
+        }
     }
 
     function toggleMute() {
@@ -832,58 +819,131 @@
     let activeLeague = 'all';
 
     async function fetchAllMatches() {
-        const today = new Date().toISOString().split('T')[0];
         allMatches = [];
         const grid = document.getElementById('matchesGrid');
         
-        for (const [id, name] of Object.entries(LEAGUES)) {
-            try {
-                const resp = await fetch(SPORTS_API + '/eventsday.php?d=' + today + '&l=' + id);
-                if (resp.ok) {
-                    const data = await resp.json();
-                    for (const e of (data.events || [])) {
+        // LiveScore API - gerçek zamanlı maç verisi
+        const LIVESCORE_LEAGUES = {
+            'super-lig': {id: 'all', name: 'SÜPER LİG', filter: 'Turkish Super Lig'},
+            'champions-league': {id: 'all', name: 'ŞAMPİYONLAR LİGİ', filter: 'Champions League'},
+            'serie-a': {id: 'all', name: 'SERİE A', filter: 'Serie A'},
+            'bundesliga': {id: 'all', name: 'BUNDESLIGA', filter: 'Bundesliga'},
+            'la-liga': {id: 'all', name: 'LA LİGA', filter: 'LaLiga'},
+            'premier-lig': {id: 'all', name: 'PREMİER LİG', filter: 'Premier League'}
+        };
+
+        const leagueIdMap = {
+            'Turkish Super Lig': '4339', 'Trendyol Süper Lig': '4339', 'Super Lig': '4339',
+            'Champions League': '4480', 'UEFA Champions League': '4480',
+            'Serie A': '4332', 'Serie A TIM': '4332',
+            'Bundesliga': '4331', '1. Bundesliga': '4331',
+            'LaLiga': '4335', 'La Liga': '4335', 'LaLiga EA Sports': '4335',
+            'Premier League': '4328'
+        };
+        
+        try {
+            const today = new Date();
+            const dateStr = today.getFullYear() + 
+                String(today.getMonth() + 1).padStart(2, '0') + 
+                String(today.getDate()).padStart(2, '0');
+            
+            const resp = await fetch(BACKEND_URL + '/api/livescore/today');
+            if (resp.ok) {
+                const data = await resp.json();
+                const stages = data.Stages || [];
+                
+                for (const stage of stages) {
+                    const leagueName = stage.Snm || '';
+                    const country = stage.Cnm || '';
+                    
+                    // Lig filtreleme
+                    let matchedLeague = null;
+                    let matchedLeagueId = 'other';
+                    
+                    // Ülke ve lig eşleştirme
+                    const countryLower = country.toLowerCase();
+                    const leagueNameLower = leagueName.toLowerCase();
+                    
+                    if ((countryLower.includes('turk') || countryLower.includes('türk')) && leagueNameLower.includes('süper')) {
+                        matchedLeague = leagueName; matchedLeagueId = '4339';
+                    } else if (leagueNameLower.includes('champions league') && countryLower === 'world') {
+                        matchedLeague = leagueName; matchedLeagueId = '4480';
+                    } else if (leagueNameLower === 'serie a' && countryLower.includes('ital')) {
+                        matchedLeague = leagueName; matchedLeagueId = '4332';
+                    } else if (leagueNameLower === 'bundesliga' && countryLower.includes('german')) {
+                        matchedLeague = leagueName; matchedLeagueId = '4331';
+                    } else if (leagueNameLower.includes('laliga') && countryLower.includes('spain')) {
+                        matchedLeague = leagueName; matchedLeagueId = '4335';
+                    } else if (leagueNameLower === 'premier league' && countryLower.includes('england')) {
+                        matchedLeague = leagueName; matchedLeagueId = '4328';
+                    }
+                    
+                    if (!matchedLeague) continue; // Sadece büyük ligler
+                    
+                    for (const evt of (stage.Events || [])) {
+                        const t1 = (evt.T1 || [{}])[0];
+                        const t2 = (evt.T2 || [{}])[0];
+                        const eps = evt.Eps || 'NS';
+                        
+                        let status = 'BAŞLAMADI';
+                        if (eps === 'NS') status = 'BAŞLAMADI';
+                        else if (eps === 'HT') status = 'DEVRE ARASI';
+                        else if (eps === 'FT') status = 'MAÇ SONU';
+                        else if (eps === 'AP') status = 'UZATMA SONU';
+                        else if (eps.includes("'")) status = eps;
+                        else if (eps === 'Postp.') status = 'ERTELENDİ';
+                        else status = eps;
+                        
+                        // Saat bilgisi (LiveScore UTC-3 → Türkiye UTC+3 = +6 saat fark)
+                        const matchTime = evt.Esd ? String(evt.Esd).substring(8, 10) + ':' + String(evt.Esd).substring(10, 12) : '';
+                        if (status === 'BAŞLAMADI' && matchTime) {
+                            let h = parseInt(matchTime.substring(0, 2)) + 6;
+                            if (h >= 24) h -= 24;
+                            status = 'MAÇ ÖNÜ - ' + String(h).padStart(2, '0') + ':' + matchTime.substring(3);
+                        }
+                        
                         allMatches.push({
-                            leagueId: id,
-                            league: name,
-                            home: e.strHomeTeam || '---',
-                            away: e.strAwayTeam || '---',
-                            scoreH: e.intHomeScore,
-                            scoreA: e.intAwayScore,
-                            status: getStatus(e),
-                            time: e.strTime || ''
+                            leagueId: matchedLeagueId,
+                            league: leagueName + ' (' + country + ')',
+                            home: t1.Nm || '---',
+                            away: t2.Nm || '---',
+                            scoreH: evt.Tr1 !== undefined ? evt.Tr1 : null,
+                            scoreA: evt.Tr2 !== undefined ? evt.Tr2 : null,
+                            status: status,
+                            time: matchTime
                         });
                     }
                 }
-            } catch (err) {}
+            }
+        } catch (err) {
+            console.log('LiveScore API hatası:', err);
         }
         
-        // Bugün maç yoksa sezon maçlarından yaklaşanları göster
+        // Eğer LiveScore'dan veri gelmediyse TheSportsDB'ye fallback
         if (allMatches.length === 0) {
-            try {
-                const resp = await fetch(SPORTS_API + '/eventsseason.php?id=4339&s=2024-2025');
-                if (resp.ok) {
-                    const data = await resp.json();
-                    const upcoming = (data.events || [])
-                        .filter(e => e.dateEvent >= today)
-                        .sort((a, b) => a.dateEvent.localeCompare(b.dateEvent))
-                        .slice(0, 8);
-                    for (const e of upcoming) {
-                        const t = e.strTime || '00:00:00';
-                        let h = parseInt(t.substring(0, 2)) + 3;
-                        if (h >= 24) h -= 24;
-                        allMatches.push({
-                            leagueId: '4339', league: 'SÜPER LİG',
-                            home: e.strHomeTeam, away: e.strAwayTeam,
-                            scoreH: null, scoreA: null,
-                            status: e.dateEvent + ' ' + String(h).padStart(2,'0') + ':' + t.substring(3,5),
-                            time: t
-                        });
+            const today = new Date().toISOString().split('T')[0];
+            for (const [id, name] of Object.entries(LEAGUES)) {
+                try {
+                    const resp = await fetch(SPORTS_API + '/eventsday.php?d=' + today + '&l=' + id);
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        for (const e of (data.events || [])) {
+                            allMatches.push({
+                                leagueId: id, league: name,
+                                home: e.strHomeTeam || '---', away: e.strAwayTeam || '---',
+                                scoreH: e.intHomeScore, scoreA: e.intAwayScore,
+                                status: getStatus(e), time: e.strTime || ''
+                            });
+                        }
                     }
-                }
-            } catch (err) {}
+                } catch (err) {}
+            }
         }
         
         renderMatches();
+        
+        // Her 60 saniyede güncelle
+        setTimeout(fetchAllMatches, 60000);
     }
 
     function filterLeague(id) {
@@ -935,6 +995,11 @@
     window.retryStream = retryStream;
     
     document.addEventListener('DOMContentLoaded', () => {
+        // Video event listeners - play/pause senkronizasyonu
+        video.addEventListener('play', syncPlayIcon);
+        video.addEventListener('pause', syncPlayIcon);
+        video.addEventListener('playing', syncPlayIcon);
+        
         initChannelTabs();
         setupStream();
         connectWebSocket();

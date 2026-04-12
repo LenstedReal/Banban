@@ -268,6 +268,29 @@ async def get_live_scores():
     return score
 
 # ============================================
+# LiveScore Proxy (CORS bypass)
+# ============================================
+@api_router.get("/livescore/today")
+async def livescore_today():
+    """Proxy LiveScore API for today's matches - bypasses CORS"""
+    try:
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+        date_str = now.strftime("%Y%m%d")
+        
+        async with httpx.AsyncClient(timeout=10.0) as http_client:
+            resp = await http_client.get(
+                f"https://prod-public-api.livescore.com/v1/api/app/date/soccer/{date_str}/-3?MD=1",
+                headers={"User-Agent": "Mozilla/5.0"}
+            )
+            if resp.status_code == 200:
+                return resp.json()
+            return {"Stages": []}
+    except Exception as e:
+        logger.error(f"LiveScore proxy error: {e}")
+        return {"Stages": []}
+
+# ============================================
 # Channel Management
 # ============================================
 @api_router.get("/channels")
