@@ -536,21 +536,21 @@
             <div class="sponsors-section">
                 <div class="sponsors-title">Bu platform aşağıdaki şirketlerin destekleriyle kurulmuştur</div>
                 <div class="sponsors-grid" data-testid="sponsors-grid">
-                    <div class="sponsor-item"><img src="https://logo.clearbit.com/papara.com" alt="Papara" onerror="this.style.display='none'"><span>PAPARA</span></div>
-                    <div class="sponsor-item"><img src="https://logo.clearbit.com/togg.com.tr" alt="TOGG" onerror="this.style.display='none'"><span>TOGG</span></div>
-                    <div class="sponsor-item"><img src="https://logo.clearbit.com/digiturk.com.tr" alt="DigiTürk" onerror="this.style.display='none'"><span>DigiTürk</span></div>
-                    <div class="sponsor-item"><img src="https://logo.clearbit.com/turkcell.com.tr" alt="Turkcell" onerror="this.style.display='none'"><span>Turkcell</span></div>
-                    <div class="sponsor-item"><img src="https://logo.clearbit.com/sixt.com" alt="SIXT" onerror="this.style.display='none'"><span>SIXT</span></div>
-                    <div class="sponsor-item"><img src="https://logo.clearbit.com/socar.com.tr" alt="SOCAR" onerror="this.style.display='none'"><span>SOCAR</span></div>
-                    <div class="sponsor-item"><img src="https://logo.clearbit.com/meritking.com" alt="MERİTKİNG" onerror="this.style.display='none'"><span>MERİTKİNG</span></div>
-                    <div class="sponsor-item"><img src="https://logo.clearbit.com/turkishairlines.com" alt="THY" onerror="this.style.display='none'"><span>THY</span></div>
-                    <div class="sponsor-item"><img src="https://logo.clearbit.com/garantibbva.com.tr" alt="Garanti BBVA" onerror="this.style.display='none'"><span>Garanti BBVA</span></div>
-                    <div class="sponsor-item"><img src="https://logo.clearbit.com/avis.com.tr" alt="AVIS" onerror="this.style.display='none'"><span>AVIS</span></div>
-                    <div class="sponsor-item"><img src="https://logo.clearbit.com/terrapizza.com.tr" alt="Terra Pizza" onerror="this.style.display='none'"><span>Terra Pizza</span></div>
-                    <div class="sponsor-item"><img src="https://logo.clearbit.com/hdisigorta.com.tr" alt="HDI Sigorta" onerror="this.style.display='none'"><span>HDI Sigorta</span></div>
-                    <div class="sponsor-item"><img src="https://logo.clearbit.com/trendyol.com" alt="Trendyol" onerror="this.style.display='none'"><span>Trendyol</span></div>
-                    <div class="sponsor-item"><img src="https://logo.clearbit.com/getir.com" alt="Getir" onerror="this.style.display='none'"><span>Getir</span></div>
-                    <div class="sponsor-item"><img src="https://logo.clearbit.com/hepsiburada.com" alt="Hepsiburada" onerror="this.style.display='none'"><span>Hepsiburada</span></div>
+                    <div class="sponsor-item"><img src="https://www.google.com/s2/favicons?domain=papara.com&sz=64" alt=""><span>PAPARA</span></div>
+                    <div class="sponsor-item"><img src="https://www.google.com/s2/favicons?domain=togg.com.tr&sz=64" alt=""><span>TOGG</span></div>
+                    <div class="sponsor-item"><img src="https://www.google.com/s2/favicons?domain=digiturk.com.tr&sz=64" alt=""><span>DigiTürk</span></div>
+                    <div class="sponsor-item"><img src="https://www.google.com/s2/favicons?domain=turkcell.com.tr&sz=64" alt=""><span>Turkcell</span></div>
+                    <div class="sponsor-item"><img src="https://www.google.com/s2/favicons?domain=sixt.com&sz=64" alt=""><span>SIXT</span></div>
+                    <div class="sponsor-item"><img src="https://www.google.com/s2/favicons?domain=socar.com.tr&sz=64" alt=""><span>SOCAR</span></div>
+                    <div class="sponsor-item"><img src="https://www.google.com/s2/favicons?domain=meritking.com&sz=64" alt=""><span>MERİTKİNG</span></div>
+                    <div class="sponsor-item"><img src="https://www.google.com/s2/favicons?domain=turkishairlines.com&sz=64" alt=""><span>THY</span></div>
+                    <div class="sponsor-item"><img src="https://www.google.com/s2/favicons?domain=garantibbva.com.tr&sz=64" alt=""><span>Garanti BBVA</span></div>
+                    <div class="sponsor-item"><img src="https://www.google.com/s2/favicons?domain=avis.com.tr&sz=64" alt=""><span>AVIS</span></div>
+                    <div class="sponsor-item"><img src="https://www.google.com/s2/favicons?domain=terrapizza.com.tr&sz=64" alt=""><span>Terra Pizza</span></div>
+                    <div class="sponsor-item"><img src="https://www.google.com/s2/favicons?domain=hdisigorta.com.tr&sz=64" alt=""><span>HDI Sigorta</span></div>
+                    <div class="sponsor-item"><img src="https://www.google.com/s2/favicons?domain=trendyol.com&sz=64" alt=""><span>Trendyol</span></div>
+                    <div class="sponsor-item"><img src="https://www.google.com/s2/favicons?domain=getir.com&sz=64" alt=""><span>Getir</span></div>
+                    <div class="sponsor-item"><img src="https://www.google.com/s2/favicons?domain=hepsiburada.com&sz=64" alt=""><span>Hepsiburada</span></div>
                 </div>
             </div>
             <div class="sponsor">by <span class="sponsor-name">lenstedreal</span></div>
@@ -883,7 +883,13 @@
                 updateServerUI();
                 
                 const ch = CHANNELS[channel];
-                if (!ch || ch.status === 'maintenance') { showMaintenance(); return; }
+                if (!ch || ch.status === 'maintenance') {
+                    // Önceki stream'i temizle
+                    if (hls) { hls.destroy(); hls = null; }
+                    if (crashCheckInterval) clearInterval(crashCheckInterval);
+                    showMaintenance();
+                    return;
+                }
                 hideAdOverlay();
                 setupStream();
             });
@@ -1044,13 +1050,14 @@
         });
     }
 
-    function switchServer(index) {
+    // Window'a bağla (inline onclick erişimi için)
+    window.switchServer = function(index) {
         currentServerIndex = index;
         retryCount = 0;
         updateServerUI();
         if (hls) { hls.destroy(); hls = null; }
         setupStream();
-    }
+    };
 
     // ============================================
     // SUBTITLES
@@ -1507,13 +1514,26 @@
     // ============================================
     // INIT
     // ============================================
+    // Window'a bağla (inline onclick erişimi)
+    window.togglePlay = togglePlay;
+    window.toggleMute = toggleMute;
+    window.setVolume = setVolume;
+    window.togglePiP = togglePiP;
+    window.toggleFullscreen = toggleFullscreen;
+    window.startCast = startCast;
+    window.toggleQualityMenu = toggleQualityMenu;
+    window.setQuality = setQuality;
+    window.setupStream = setupStream;
+    window.filterLeague = filterLeague;
+    window.retryStream = retryStream;
+    
     document.addEventListener('DOMContentLoaded', () => {
         initChannelTabs();
         setupStream();
         connectWebSocket();
         fetchLiveScore();
         updateConnectionIcon();
-        fetchAllMatches(); // Maç merkezi
+        fetchAllMatches();
     });
     </script>
 </body>
