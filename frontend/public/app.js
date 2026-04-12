@@ -3,10 +3,10 @@
     // ============================================
     const BACKEND_URL = (function() {
         const h = window.location.hostname;
-        if (h.includes('vercel')) return 'https://repo-download-2.preview.emergentagent.com';
+        if (h.includes('vercel')) return '';
         if (h.includes('emergentagent')) return window.location.origin;
         if (h === 'localhost' || h === '127.0.0.1') return 'http://localhost:8001';
-        return 'https://repo-download-2.preview.emergentagent.com';
+        return '';
     })();
     const IS_STATIC = !BACKEND_URL;
 
@@ -35,7 +35,7 @@
         akamai: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
         apple: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
         bein1_video: BEIN1_VIDEO,
-        bein1: createBeinMasterUrl()
+        bein1: (BACKEND_URL || '') + '/api/bein/master.m3u8?video=' + encodeURIComponent(BEIN1_VIDEO) + '&audio=' + encodeURIComponent(BEIN1_AUDIO)
     };
 
     // Sunucu yedekleri - AYNI KANAL, FARKLI KAYNAK (bağlantı kesilince geçiş)
@@ -169,16 +169,13 @@
 
     async function fetchLiveScore() {
         try {
-            // LiveScore API - gerçek zamanlı
+            // LiveScore API - backend proxy veya Vercel serverless
             const today = new Date();
             const dateStr = today.getFullYear() + 
                 String(today.getMonth() + 1).padStart(2, '0') + 
                 String(today.getDate()).padStart(2, '0');
             
-            // Backend proxy varsa onu kullan, yoksa direkt LiveScore API
-            const liveScoreUrl = BACKEND_URL ? 
-                BACKEND_URL + '/api/livescore/today' : 
-                'https://prod-public-api.livescore.com/v1/api/app/date/soccer/' + dateStr + '/-3?MD=1';
+            const liveScoreUrl = (BACKEND_URL || '') + '/api/livescore/today';
             const resp = await fetch(liveScoreUrl);
             if (resp.ok) {
                 const data = await resp.json();
@@ -1012,9 +1009,7 @@
                 String(today.getMonth() + 1).padStart(2, '0') + 
                 String(today.getDate()).padStart(2, '0');
             
-            const matchesUrl = BACKEND_URL ? 
-                BACKEND_URL + '/api/livescore/today' : 
-                'https://prod-public-api.livescore.com/v1/api/app/date/soccer/' + dateStr + '/-3?MD=1';
+            const matchesUrl = (BACKEND_URL || '') + '/api/livescore/today';
             const resp = await fetch(matchesUrl);
             if (resp.ok) {
                 const data = await resp.json();
