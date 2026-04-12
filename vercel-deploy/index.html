@@ -42,16 +42,16 @@
                 var(--bg-dark);
         }
 
-        /* SCANLINES + NOISE */
+        /* SCANLINES + NOISE - artırılmış */
         .scanlines {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: repeating-linear-gradient(0deg, rgba(0,0,0,0.15) 0px, rgba(0,0,0,0.15) 1px, transparent 1px, transparent 2px);
+            background: repeating-linear-gradient(0deg, rgba(0,0,0,0.2) 0px, rgba(0,0,0,0.2) 1px, transparent 1px, transparent 2px);
             pointer-events: none; z-index: 1000;
         }
         .app-container::before {
             content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-            opacity: 0.03; pointer-events: none; z-index: 999;
+            opacity: 0.05; pointer-events: none; z-index: 999;
         }
 
         /* GLITCH */
@@ -77,13 +77,6 @@
         .logo-sub { font-family: 'Orbitron', sans-serif; font-size: 12px; font-weight: 700; color: var(--pink); letter-spacing: 3px; margin-top: 2px; text-shadow: 0 0 10px var(--pink); }
         
         .header-right { display: flex; align-items: center; gap: 15px; }
-        
-        .connection-badge {
-            display: flex; align-items: center; gap: 6px;
-            background: rgba(0, 255, 136, 0.1); border: 1px solid rgba(0, 255, 136, 0.3);
-            padding: 5px 10px; font-size: 10px; color: var(--green); letter-spacing: 1px;
-        }
-        .connection-badge svg { width: 14px; height: 14px; fill: currentColor; }
 
         .live-badge {
             display: flex; align-items: center; gap: 8px;
@@ -230,6 +223,70 @@
         .quality-option .check { display: none; }
         .quality-option.active .check { display: inline; color: var(--cyan); }
 
+        /* VOLUME SLIDER */
+        .volume-control { display: flex; align-items: center; gap: 8px; }
+        .volume-slider {
+            -webkit-appearance: none; appearance: none;
+            width: 80px; height: 4px; background: rgba(255,255,255,0.15);
+            outline: none; cursor: pointer; border-radius: 2px;
+        }
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: 14px; height: 14px; border-radius: 50%;
+            background: var(--cyan); cursor: pointer;
+            box-shadow: 0 0 8px var(--cyan);
+        }
+        .volume-slider::-moz-range-thumb {
+            width: 14px; height: 14px; border-radius: 50%;
+            background: var(--cyan); cursor: pointer; border: none;
+            box-shadow: 0 0 8px var(--cyan);
+        }
+
+        /* CONNECTION BADGE (video controls inside) */
+        .conn-indicator {
+            display: flex; align-items: center; gap: 4px;
+            font-size: 9px; color: var(--green); letter-spacing: 1px;
+        }
+        .conn-indicator svg { width: 14px; height: 14px; fill: currentColor; }
+
+        /* MATCH CENTER */
+        .match-center {
+            max-width: 1200px; margin: 0 auto; padding: 20px;
+        }
+        .match-center-title {
+            font-family: 'Orbitron', sans-serif; font-size: 13px; color: var(--cyan);
+            letter-spacing: 3px; margin-bottom: 15px; text-align: center;
+            display: flex; align-items: center; gap: 15px;
+        }
+        .match-center-title::before, .match-center-title::after {
+            content: ''; flex: 1; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+        }
+        .league-filter {
+            display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-bottom: 15px;
+        }
+        .league-filter-btn {
+            font-family: 'Share Tech Mono', monospace; font-size: 9px; padding: 5px 10px;
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text-dim); cursor: pointer; transition: all 0.3s; letter-spacing: 1px;
+        }
+        .league-filter-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+        .league-filter-btn.active { border-color: var(--pink); color: var(--pink); background: rgba(255,0,170,0.1); }
+        .matches-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px;
+        }
+        .match-card {
+            background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08);
+            padding: 12px 15px; transition: all 0.3s; cursor: default;
+        }
+        .match-card:hover { border-color: var(--cyan); box-shadow: 0 0 10px rgba(0,240,255,0.1); }
+        .match-card-league { font-size: 9px; color: var(--pink); letter-spacing: 2px; margin-bottom: 8px; }
+        .match-card-teams { display: flex; justify-content: space-between; align-items: center; }
+        .match-card-team { font-size: 12px; font-weight: bold; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .match-card-score { font-family: 'Orbitron', sans-serif; font-size: 16px; color: var(--cyan); font-weight: 700; min-width: 50px; text-align: center; }
+        .match-card-status { font-size: 10px; color: var(--text-dim); margin-top: 6px; text-align: center; }
+        .match-card-status.live { color: var(--green); }
+
         .unmute-btn {
             position: absolute; top: 20px; right: 20px;
             display: flex; align-items: center; gap: 8px;
@@ -244,14 +301,24 @@
         .footer { background: var(--bg-card); border-top: 1px solid var(--pink); padding: 30px 20px 20px; text-align: center; position: relative; z-index: 100; }
         .sponsors-section { max-width: 1200px; margin: 0 auto 20px; }
         .sponsors-title { font-size: 12px; color: var(--text-dim); letter-spacing: 3px; margin-bottom: 15px; text-transform: uppercase; }
-        .sponsors-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+        .sponsors-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; align-items: center; }
         .sponsor-item {
-            font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 600;
-            color: var(--text-dim); background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1); padding: 8px 14px;
-            letter-spacing: 1px; transition: all 0.3s;
+            display: flex; align-items: center; gap: 8px;
+            background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 8px 14px; transition: all 0.3s; cursor: default;
         }
-        .sponsor-item:hover { border-color: var(--cyan); color: var(--cyan); box-shadow: 0 0 10px rgba(0, 240, 255, 0.2); }
+        .sponsor-item:hover { border-color: var(--cyan); box-shadow: 0 0 10px rgba(0, 240, 255, 0.2); }
+        .sponsor-item img {
+            height: 22px; width: auto; max-width: 80px; object-fit: contain;
+            filter: brightness(0) invert(1) opacity(0.6);
+            transition: all 0.3s;
+        }
+        .sponsor-item:hover img { filter: brightness(0) invert(1) sepia(1) hue-rotate(150deg) saturate(5) opacity(1); }
+        .sponsor-item span {
+            font-family: 'Orbitron', sans-serif; font-size: 9px; font-weight: 600;
+            color: var(--text-dim); letter-spacing: 1px; transition: all 0.3s;
+        }
+        .sponsor-item:hover span { color: var(--cyan); }
         .sponsor { margin-top: 20px; font-size: 12px; color: var(--text-dim); }
         .sponsor-name { color: var(--pink); font-weight: bold; text-shadow: 0 0 10px var(--pink); }
 
@@ -318,12 +385,6 @@
                     </div>
                 </div>
                 <div class="header-right">
-                    <div class="connection-badge" id="connectionBadge" data-testid="connection-badge">
-                        <svg id="connectionIcon" viewBox="0 0 24 24">
-                            <path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/>
-                        </svg>
-                        <span id="connectionText">WiFi</span>
-                    </div>
                     <div class="channel-badge" id="leagueBadge" data-testid="league-badge">SÜPER LİG</div>
                 </div>
             </div>
@@ -403,24 +464,32 @@
                     </div>
                 </div>
 
-                <!-- VIDEO CONTROLS -->
+                <!-- VIDEO CONTROLS - PREMIUM -->
                 <div class="video-controls" data-testid="video-controls">
                     <div class="controls-left">
                         <button class="control-btn" onclick="togglePlay()" data-testid="play-btn">
                             <svg id="playIcon" width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                         </button>
-                        <button class="control-btn" onclick="toggleMute()" data-testid="mute-btn">
-                            <svg id="muteIcon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
-                            </svg>
-                        </button>
+                        <div class="volume-control" data-testid="volume-control">
+                            <button class="control-btn" onclick="toggleMute()" data-testid="mute-btn">
+                                <svg id="muteIcon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
+                                </svg>
+                            </button>
+                            <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="0" oninput="setVolume(this.value)" data-testid="volume-slider">
+                        </div>
                     </div>
                     <div class="controls-right">
+                        <div class="conn-indicator" id="connIndicator" data-testid="connection-indicator">
+                            <svg id="connectionIcon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/>
+                            </svg>
+                            <span id="connectionText">5G</span>
+                        </div>
                         <div class="live-indicator">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg>
                             <span>CANLI</span>
                         </div>
-                        <!-- QUALITY SELECTOR -->
                         <div class="quality-selector" data-testid="quality-selector">
                             <button class="quality-btn" id="qualityBtn" onclick="toggleQualityMenu()" data-testid="quality-btn">AUTO</button>
                             <div class="quality-dropdown" id="qualityDropdown" data-testid="quality-dropdown">
@@ -428,13 +497,13 @@
                             </div>
                         </div>
                         <button class="control-btn" onclick="togglePiP()" title="Küçük Pencere" data-testid="pip-btn">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M19 7h-8v6h8V7zm2-4H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14z"/></svg>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 7h-8v6h8V7zm2-4H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14z"/></svg>
                         </button>
                         <button class="control-btn" onclick="toggleFullscreen()" title="Tam Ekran" data-testid="fullscreen-btn">
-                            <svg id="fullscreenIcon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+                            <svg id="fullscreenIcon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
                         </button>
-                        <button class="control-btn" onclick="startCast()" title="TV'ye Yansit" data-testid="cast-btn">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M21 3H3c-1.1 0-2 .9-2 2v3h2V5h18v14h-7v2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.93-11-11-11z"/></svg>
+                        <button class="control-btn" onclick="startCast()" title="TV'ye Yansıt" data-testid="cast-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M21 3H3c-1.1 0-2 .9-2 2v3h2V5h18v14h-7v2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.93-11-11-11z"/></svg>
                         </button>
                     </div>
                 </div>
@@ -446,25 +515,42 @@
             </div>
         </main>
 
+        <!-- MAÇ MERKEZİ -->
+        <div class="match-center" data-testid="match-center">
+            <div class="match-center-title">MAÇ MERKEZİ</div>
+            <div class="league-filter" id="leagueFilter" data-testid="league-filter">
+                <button class="league-filter-btn active" onclick="filterLeague('all')">TÜMÜ</button>
+                <button class="league-filter-btn" onclick="filterLeague('4339')">SÜPER LİG</button>
+                <button class="league-filter-btn" onclick="filterLeague('4480')">ŞAMPİYONLAR LİGİ</button>
+                <button class="league-filter-btn" onclick="filterLeague('4332')">SERİE A</button>
+                <button class="league-filter-btn" onclick="filterLeague('4331')">BUNDESLIGA</button>
+                <button class="league-filter-btn" onclick="filterLeague('4335')">LA LİGA</button>
+                <button class="league-filter-btn" onclick="filterLeague('4328')">PREMİER LİG</button>
+            </div>
+            <div class="matches-grid" id="matchesGrid" data-testid="matches-grid">
+                <div style="text-align:center;color:var(--text-dim);padding:20px;grid-column:1/-1;">Maçlar yükleniyor...</div>
+            </div>
+        </div>
+
         <footer class="footer" data-testid="footer">
             <div class="sponsors-section">
                 <div class="sponsors-title">Bu platform aşağıdaki şirketlerin destekleriyle kurulmuştur</div>
                 <div class="sponsors-grid" data-testid="sponsors-grid">
-                    <div class="sponsor-item">PAPARA</div>
-                    <div class="sponsor-item">TOGG</div>
-                    <div class="sponsor-item">DigiTürk</div>
-                    <div class="sponsor-item">Turkcell</div>
-                    <div class="sponsor-item">SIXT</div>
-                    <div class="sponsor-item">SOCAR</div>
-                    <div class="sponsor-item">MERİTKİNG</div>
-                    <div class="sponsor-item">THY</div>
-                    <div class="sponsor-item">Garanti BBVA</div>
-                    <div class="sponsor-item">AVIS</div>
-                    <div class="sponsor-item">Terra Pizza</div>
-                    <div class="sponsor-item">HDI Sigorta</div>
-                    <div class="sponsor-item">Trendyol</div>
-                    <div class="sponsor-item">Getir</div>
-                    <div class="sponsor-item">Hepsiburada</div>
+                    <div class="sponsor-item"><img src="https://logo.clearbit.com/papara.com" alt="Papara" onerror="this.style.display='none'"><span>PAPARA</span></div>
+                    <div class="sponsor-item"><img src="https://logo.clearbit.com/togg.com.tr" alt="TOGG" onerror="this.style.display='none'"><span>TOGG</span></div>
+                    <div class="sponsor-item"><img src="https://logo.clearbit.com/digiturk.com.tr" alt="DigiTürk" onerror="this.style.display='none'"><span>DigiTürk</span></div>
+                    <div class="sponsor-item"><img src="https://logo.clearbit.com/turkcell.com.tr" alt="Turkcell" onerror="this.style.display='none'"><span>Turkcell</span></div>
+                    <div class="sponsor-item"><img src="https://logo.clearbit.com/sixt.com" alt="SIXT" onerror="this.style.display='none'"><span>SIXT</span></div>
+                    <div class="sponsor-item"><img src="https://logo.clearbit.com/socar.com.tr" alt="SOCAR" onerror="this.style.display='none'"><span>SOCAR</span></div>
+                    <div class="sponsor-item"><img src="https://logo.clearbit.com/meritking.com" alt="MERİTKİNG" onerror="this.style.display='none'"><span>MERİTKİNG</span></div>
+                    <div class="sponsor-item"><img src="https://logo.clearbit.com/turkishairlines.com" alt="THY" onerror="this.style.display='none'"><span>THY</span></div>
+                    <div class="sponsor-item"><img src="https://logo.clearbit.com/garantibbva.com.tr" alt="Garanti BBVA" onerror="this.style.display='none'"><span>Garanti BBVA</span></div>
+                    <div class="sponsor-item"><img src="https://logo.clearbit.com/avis.com.tr" alt="AVIS" onerror="this.style.display='none'"><span>AVIS</span></div>
+                    <div class="sponsor-item"><img src="https://logo.clearbit.com/terrapizza.com.tr" alt="Terra Pizza" onerror="this.style.display='none'"><span>Terra Pizza</span></div>
+                    <div class="sponsor-item"><img src="https://logo.clearbit.com/hdisigorta.com.tr" alt="HDI Sigorta" onerror="this.style.display='none'"><span>HDI Sigorta</span></div>
+                    <div class="sponsor-item"><img src="https://logo.clearbit.com/trendyol.com" alt="Trendyol" onerror="this.style.display='none'"><span>Trendyol</span></div>
+                    <div class="sponsor-item"><img src="https://logo.clearbit.com/getir.com" alt="Getir" onerror="this.style.display='none'"><span>Getir</span></div>
+                    <div class="sponsor-item"><img src="https://logo.clearbit.com/hepsiburada.com" alt="Hepsiburada" onerror="this.style.display='none'"><span>Hepsiburada</span></div>
                 </div>
             </div>
             <div class="sponsor">by <span class="sponsor-name">lenstedreal</span></div>
@@ -830,10 +916,21 @@
             }
         }, 15000);
 
-        // REKLAM channel = HLS stream with ad overlay
+        // REKLAM channel = Lokal MP4 video (30sn loop)
         if (channel.isAd) {
-            // Ad overlay ekle
+            clearTimeout(loadTimeout);
+            loadingOverlay.classList.add('hidden');
+            video.removeAttribute('src');
+            if (hls) { hls.destroy(); hls = null; }
+            video.src = 'reklam.mp4';
+            video.loop = true;
+            video.muted = isMuted;
+            video.play().catch(() => {});
+            isPlaying = true;
+            unmuteBtn.classList.toggle('hidden', !isMuted);
+            updateQualityMenu([]);
             showAdOverlay();
+            return;
         }
 
         // Get stream URL based on server index
@@ -1019,10 +1116,29 @@
         if (!video) return;
         isMuted = !isMuted;
         video.muted = isMuted;
+        if (!isMuted) video.volume = 0.7;
         unmuteBtn.classList.toggle('hidden', !isMuted);
+        document.getElementById('volumeSlider').value = isMuted ? 0 : Math.round(video.volume * 100);
         const icon = document.getElementById('muteIcon');
         if (isMuted) {
             icon.innerHTML = '<path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>';
+        } else {
+            icon.innerHTML = '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>';
+        }
+    }
+
+    function setVolume(val) {
+        if (!video) return;
+        const v = parseInt(val) / 100;
+        video.volume = v;
+        video.muted = v === 0;
+        isMuted = v === 0;
+        unmuteBtn.classList.toggle('hidden', !isMuted);
+        const icon = document.getElementById('muteIcon');
+        if (v === 0) {
+            icon.innerHTML = '<path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>';
+        } else if (v < 0.5) {
+            icon.innerHTML = '<path d="M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z"/>';
         } else {
             icon.innerHTML = '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>';
         }
@@ -1143,36 +1259,46 @@
     });
 
     // ============================================
-    // CONNECTION DETECTION
+    // CONNECTION DETECTION (5G destekli, video içinde)
     // ============================================
     function updateConnectionIcon() {
-        const badge = document.getElementById('connectionBadge');
         const icon = document.getElementById('connectionIcon');
         const text = document.getElementById('connectionText');
+        if (!icon || !text) return;
         const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
         
         if (conn) {
             const type = conn.type || '';
             const eff = conn.effectiveType || '';
             
-            if (type === 'wifi' || (!type && eff === '4g')) {
+            if (type === 'wifi') {
                 icon.innerHTML = '<path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/>';
-                text.textContent = type === 'wifi' ? 'WiFi' : '4G';
-                badge.style.borderColor = 'rgba(0, 255, 136, 0.3)';
-                badge.style.color = 'var(--green)';
-            } else if (type === 'cellular' || eff === '3g' || eff === '2g') {
+                text.textContent = 'WiFi';
+                text.style.color = 'var(--green)';
+            } else if (type === 'cellular' || eff) {
                 icon.innerHTML = '<path d="M2 22h20V2z"/>';
-                text.textContent = eff ? eff.toUpperCase() : 'Mobil';
-                badge.style.borderColor = 'rgba(255, 136, 0, 0.3)';
-                badge.style.color = 'var(--orange)';
-                
-                // Lag = suggest quality drop
+                // 5G desteği
+                if (conn.downlink && conn.downlink > 50) {
+                    text.textContent = '5G';
+                    text.style.color = 'var(--cyan)';
+                } else if (eff === '4g' || (conn.downlink && conn.downlink > 5)) {
+                    text.textContent = '4G';
+                    text.style.color = 'var(--green)';
+                } else if (eff === '3g') {
+                    text.textContent = '3G';
+                    text.style.color = 'var(--orange)';
+                } else {
+                    text.textContent = '2G';
+                    text.style.color = 'var(--red)';
+                }
                 if (conn.downlink && conn.downlink < 1.5) suggestQualityDrop();
+            } else {
+                text.textContent = eff === '4g' ? '5G' : eff ? eff.toUpperCase() : 'Online';
+                text.style.color = 'var(--green)';
             }
         } else {
-            text.textContent = navigator.onLine ? 'Online' : 'Offline';
-            badge.style.color = navigator.onLine ? 'var(--green)' : 'var(--red)';
-            badge.style.borderColor = navigator.onLine ? 'rgba(0, 255, 136, 0.3)' : 'rgba(255, 0, 64, 0.3)';
+            text.textContent = navigator.onLine ? '5G' : 'Offline';
+            text.style.color = navigator.onLine ? 'var(--cyan)' : 'var(--red)';
         }
     }
 
@@ -1278,6 +1404,107 @@
     }
 
     // ============================================
+    // MAÇ MERKEZİ
+    // ============================================
+    const LEAGUES = {
+        '4339': 'SÜPER LİG',
+        '4480': 'ŞAMPİYONLAR LİGİ',
+        '4332': 'SERİE A',
+        '4331': 'BUNDESLIGA',
+        '4335': 'LA LİGA',
+        '4328': 'PREMİER LİG'
+    };
+    let allMatches = [];
+    let activeLeague = 'all';
+
+    async function fetchAllMatches() {
+        const today = new Date().toISOString().split('T')[0];
+        allMatches = [];
+        const grid = document.getElementById('matchesGrid');
+        
+        for (const [id, name] of Object.entries(LEAGUES)) {
+            try {
+                const resp = await fetch(SPORTS_API + '/eventsday.php?d=' + today + '&l=' + id);
+                if (resp.ok) {
+                    const data = await resp.json();
+                    for (const e of (data.events || [])) {
+                        allMatches.push({
+                            leagueId: id,
+                            league: name,
+                            home: e.strHomeTeam || '---',
+                            away: e.strAwayTeam || '---',
+                            scoreH: e.intHomeScore,
+                            scoreA: e.intAwayScore,
+                            status: getStatus(e),
+                            time: e.strTime || ''
+                        });
+                    }
+                }
+            } catch (err) {}
+        }
+        
+        // Bugün maç yoksa sezon maçlarından yaklaşanları göster
+        if (allMatches.length === 0) {
+            try {
+                const resp = await fetch(SPORTS_API + '/eventsseason.php?id=4339&s=2024-2025');
+                if (resp.ok) {
+                    const data = await resp.json();
+                    const upcoming = (data.events || [])
+                        .filter(e => e.dateEvent >= today)
+                        .sort((a, b) => a.dateEvent.localeCompare(b.dateEvent))
+                        .slice(0, 8);
+                    for (const e of upcoming) {
+                        const t = e.strTime || '00:00:00';
+                        let h = parseInt(t.substring(0, 2)) + 3;
+                        if (h >= 24) h -= 24;
+                        allMatches.push({
+                            leagueId: '4339', league: 'SÜPER LİG',
+                            home: e.strHomeTeam, away: e.strAwayTeam,
+                            scoreH: null, scoreA: null,
+                            status: e.dateEvent + ' ' + String(h).padStart(2,'0') + ':' + t.substring(3,5),
+                            time: t
+                        });
+                    }
+                }
+            } catch (err) {}
+        }
+        
+        renderMatches();
+    }
+
+    function filterLeague(id) {
+        activeLeague = id;
+        document.querySelectorAll('.league-filter-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.textContent === (id === 'all' ? 'TÜMÜ' : LEAGUES[id]));
+        });
+        renderMatches();
+    }
+
+    function renderMatches() {
+        const grid = document.getElementById('matchesGrid');
+        const filtered = activeLeague === 'all' ? allMatches : allMatches.filter(m => m.leagueId === activeLeague);
+        
+        if (filtered.length === 0) {
+            grid.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:20px;grid-column:1/-1;">Bugün bu ligde maç yok</div>';
+            return;
+        }
+        
+        grid.innerHTML = filtered.map(m => {
+            const isLive = m.status.includes("'") || m.status === 'CANLI' || m.status === 'DEVRE ARASI' || m.status === '1. YARI' || m.status === '2. YARI';
+            const score = m.scoreH !== null && m.scoreH !== undefined ? (m.scoreH + ' - ' + m.scoreA) : 'vs';
+            return '<div class="match-card">' +
+                '<div class="match-card-league">' + m.league + '</div>' +
+                '<div class="match-card-teams">' +
+                    '<div class="match-card-team">' + m.home + '</div>' +
+                    '<div class="match-card-score">' + score + '</div>' +
+                    '<div class="match-card-team" style="text-align:right">' + m.away + '</div>' +
+                '</div>' +
+                '<div class="match-card-status' + (isLive ? ' live' : '') + '">' + m.status + '</div>' +
+            '</div>';
+        }).join('');
+    }
+
+    // ============================================
     // INIT
     // ============================================
     document.addEventListener('DOMContentLoaded', () => {
@@ -1286,6 +1513,7 @@
         connectWebSocket();
         fetchLiveScore();
         updateConnectionIcon();
+        fetchAllMatches(); // Maç merkezi
     });
     </script>
 </body>
