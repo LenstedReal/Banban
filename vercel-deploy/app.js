@@ -1383,6 +1383,10 @@
         updateConnectionIcon();
         fetchAllMatches();
         
+        // 15sn'de bir skor + maç merkezi güncelle (WebSocket'ten bağımsız)
+        setInterval(fetchLiveScore, 15000);
+        setInterval(fetchAllMatches, 60000);
+        
         // Bildirim sistemi başlat
         if ('Notification' in window && Notification.permission === 'granted') {
             notificationsEnabled = true;
