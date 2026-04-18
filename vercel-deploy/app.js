@@ -56,11 +56,11 @@
     const SERVER_ALTERNATIVES = {
         demo1: [STREAMS.test, STREAMS.akamai, STREAMS.apple],
         demo2: [STREAMS.demo, STREAMS.akamai, STREAMS.apple],
-        trt1: [STREAMS.trt1, STREAMS.trt1, STREAMS.akamai],
-        trthaber: [STREAMS.trthaber, STREAMS.trthaber, STREAMS.akamai],
-        trtspor: [STREAMS.trtspor, STREAMS.akamai, STREAMS.test],
-        tv8: [STREAMS.tv8, STREAMS.tv8, STREAMS.akamai],
-        bein1: [STREAMS.bein1, STREAMS.bein1_video, STREAMS.bein1_video]
+        trt1: [STREAMS.trt1, STREAMS.akamai, STREAMS.apple],
+        trthaber: [STREAMS.trthaber, STREAMS.akamai, STREAMS.apple],
+        trtspor: [STREAMS.trtspor, STREAMS.akamai, STREAMS.apple],
+        tv8: [STREAMS.tv8, STREAMS.akamai, STREAMS.apple],
+        bein1: [STREAMS.bein1, STREAMS.bein1_video, STREAMS.akamai]
     };
 
     // ============================================
@@ -539,8 +539,8 @@
         if (status === 'MAÇ SONU' || status === 'FT') {
             matchMinute.textContent = 'MAÇ SONU';
             matchMinute.className = 'match-minute ended';
-            statusText.textContent = 'BİTTİ';
-            statusBadge.className = 'live-badge ended';
+            statusText.textContent = 'CANLI';
+            statusBadge.className = 'live-badge';
         } else if (isPreMatch) {
             matchMinute.textContent = status === 'BAŞLAMADI' ? 'MAÇ ÖNÜ' : status;
             matchMinute.className = 'match-minute';
@@ -708,7 +708,6 @@
                 tab.classList.add('active');
                 currentChannel = channel;
                 currentServerIndex = 0;
-                manualServerSelect = false;
                 updateServerUI();
                 
                 const ch = CHANNELS[channel];
@@ -898,14 +897,6 @@
     }
 
     function tryNextServer() {
-        if (manualServerSelect) {
-            manualServerSelect = false;
-            loadingOverlay.classList.add('hidden');
-            hideFreezeOverlay();
-            // Boş sunucu seçildiyse bakım moduna geç
-            showMaintenance();
-            return;
-        }
         const servers = SERVER_ALTERNATIVES[currentChannel] || [];
         if (currentServerIndex < servers.length - 1) {
             currentServerIndex++;
@@ -914,8 +905,12 @@
             if (hls) { try { hls.destroy(); } catch(e){} hls = null; }
             setupStream();
         } else {
-            hideFreezeOverlay();
-            showMaintenance();
+            // Tüm sunucular denendi - ilk sunucuya dön ve tekrar dene
+            currentServerIndex = 0;
+            retryCount = 0;
+            updateServerUI();
+            if (hls) { try { hls.destroy(); } catch(e){} hls = null; }
+            setupStream();
         }
     }
 
@@ -944,11 +939,7 @@
         });
     }
 
-    let manualServerSelect = false; // Kullanıcı elle sunucu seçti mi?
-
-    // Window'a bağla (inline onclick erişimi için)
     window.switchServer = function(index) {
-        manualServerSelect = true;
         currentServerIndex = index;
         retryCount = 0;
         updateServerUI();
