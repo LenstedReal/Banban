@@ -335,6 +335,20 @@ async def check_stream_health(url: str):
     except Exception as e:
         return {"url": url, "status": 0, "ok": False, "error": str(e)}
 
+
+# Belirli tarih için LiveScore API
+@api_router.get("/livescore/date/{date_str}")
+async def livescore_date(date_str: str):
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                f"https://prod-public-api.livescore.com/v1/api/app/date/soccer/{date_str}/-3?MD=1",
+                headers={"User-Agent": "Mozilla/5.0"}
+            )
+            return resp.json()
+    except Exception as e:
+        return {"Stages": [], "error": str(e)}
+
 # ============================================
 # Stream Proxy (CORS bypass)
 # ============================================

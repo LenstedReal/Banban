@@ -54,13 +54,13 @@
 
     // Sunucu yedekleri - AYNI KANAL, FARKLI KAYNAK (bağlantı kesilince geçiş)
     const SERVER_ALTERNATIVES = {
-        demo1: [STREAMS.test, STREAMS.akamai, STREAMS.apple],
-        demo2: [STREAMS.demo, STREAMS.akamai, STREAMS.apple],
-        trt1: [STREAMS.trt1, STREAMS.akamai, STREAMS.apple],
-        trthaber: [STREAMS.trthaber, STREAMS.akamai, STREAMS.apple],
-        trtspor: [STREAMS.trtspor, STREAMS.akamai, STREAMS.apple],
-        tv8: [STREAMS.tv8, STREAMS.akamai, STREAMS.apple],
-        bein1: [STREAMS.bein1, STREAMS.bein1_video, STREAMS.akamai]
+        demo1: [STREAMS.test, STREAMS.test, STREAMS.apple],
+        demo2: [STREAMS.demo, STREAMS.demo, STREAMS.apple],
+        trt1: [STREAMS.trt1, STREAMS.trt1, STREAMS.apple],
+        trthaber: [STREAMS.trthaber, STREAMS.trthaber, STREAMS.apple],
+        trtspor: [STREAMS.trtspor, STREAMS.trtspor, STREAMS.apple],
+        tv8: [STREAMS.tv8, STREAMS.tv8, STREAMS.apple],
+        bein1: [STREAMS.bein1, STREAMS.bein1, STREAMS.bein1_video]
     };
 
     // ============================================
@@ -1394,6 +1394,13 @@
                         const t2 = (evt.T2 || [{}])[0];
                         const eps = evt.Eps || 'NS';
                         
+                        // Biten maçları 10dk sonra atla
+                        if (eps === 'FT' || eps === 'AP') {
+                            var endTime = evt.Esd ? parseInt(String(evt.Esd).substring(8,10))*60 + parseInt(String(evt.Esd).substring(10,12)) + 6*60 + 105 : 0;
+                            var nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+                            if (endTime > 0 && nowMin > endTime + 10) continue; // 10dk geçtiyse gösterme
+                        }
+                        
                         let status = 'BAŞLAMADI';
                         if (eps === 'NS') status = 'BAŞLAMADI';
                         else if (eps === 'HT') status = 'DEVRE ARASI';
@@ -1448,6 +1455,40 @@
                 } catch (err) {}
             }
         }
+        
+        // Yarınki maçları da çek
+        try {
+            var tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            var tmrStr = tomorrow.getFullYear() + String(tomorrow.getMonth()+1).padStart(2,'0') + String(tomorrow.getDate()).padStart(2,'0');
+            var tmrUrl = (BACKEND_URL || '') + '/api/livescore/tomorrow';
+            // Backend'de yoksa direkt yarın tarihli API çağır
+            if (!BACKEND_URL) tmrUrl = '/api/livescore/today'; // Vercel'de aynı endpoint
+            try {
+                var tmrResp = await fetch((BACKEND_URL || '') + '/api/livescore/date/' + tmrStr);
+                if (tmrResp.ok) {
+                    var tmrData = await tmrResp.json();
+                    var tmrStages = tmrData.Stages || [];
+                    for (var ti = 0; ti < tmrStages.length; ti++) {
+                        var ts = tmrStages[ti], tcn = (ts.Cnm||'').toLowerCase(), tsn = (ts.Snm||'').toLowerCase();
+                        var isTR = tcn.includes('turk') || tcn.includes('türk');
+                        if (!isTR) continue;
+                        for (var tj = 0; tj < (ts.Events||[]).length; tj++) {
+                            var te = ts.Events[tj];
+                            var tt1 = ((te.T1||[{}])[0].Nm||''), tt2 = ((te.T2||[{}])[0].Nm||'');
+                            var tmt = te.Esd ? String(te.Esd).substring(8,10)+':'+String(te.Esd).substring(10,12) : '';
+                            var tst = 'YARIN';
+                            if (tmt) { var th=parseInt(tmt.substring(0,2))+6; if(th>=24)th-=24; tst='YARIN '+String(th).padStart(2,'0')+':'+tmt.substring(3); }
+                            allMatches.push({
+                                leagueId: '4339', league: ts.Snm + ' (' + ts.Cnm + ')',
+                                home: tt1, away: tt2, scoreH: null, scoreA: null,
+                                status: tst, time: tmt, isTomorrow: true
+                            });
+                        }
+                    }
+                }
+            } catch(e) {}
+        } catch(e) {}
         
         renderMatches();
         
