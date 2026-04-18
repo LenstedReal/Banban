@@ -69,7 +69,7 @@
     var ADS = [
         { name: 'PUBG MOBILE', url: 'https://play.google.com/store/apps/details?id=com.tencent.ig', color: '#FF6600', vid: 'ad_pubg' },
         { name: 'eFootball 2026', url: 'https://play.google.com/store/apps/details?id=jp.konami.pesam', color: '#0066FF', vid: 'ad_efootball' },
-        { name: 'eFootball x Crossover', url: 'https://play.google.com/store/apps/details?id=jp.konami.pesam', color: '#9900FF', vid: 'ad_efcrossover' },
+        { name: 'Destiny 2', url: 'https://play.google.com/store/apps/details?id=com.bungieinc.bungiemobile', color: '#9900FF', vid: 'ad_efcrossover' },
         { name: 'Call of Duty: Warzone', url: 'https://play.google.com/store/apps/details?id=com.activision.callofduty.warzone', color: '#00CC44', vid: 'ad_cod' },
         { name: 'Civilization VI', url: 'https://play.google.com/store/apps/details?id=com.aspyr.civ6', color: '#CC0000', vid: 'ad_lords' }
     ];
