@@ -305,7 +305,7 @@
         } else if (isPreMatch) {
             matchMinute.textContent = status === 'BAŞLAMADI' ? 'MAÇ ÖNÜ' : status;
             matchMinute.className = 'match-minute';
-            statusText.textContent = 'MAÇ ÖNÜ';
+            statusText.textContent = 'CANLI';
             statusBadge.className = 'live-badge';
         } else {
             matchMinute.textContent = status;
