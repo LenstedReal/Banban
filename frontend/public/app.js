@@ -369,7 +369,7 @@
         }, 4000);
 
         banner.onclick = function() {
-            window.open('https://www.mackolik.com', '_blank');
+            window.focus();
             banner.style.top = '-80px';
             setTimeout(function() { banner.remove(); processNotifQueue(); }, 300);
         };
@@ -626,14 +626,15 @@
         try {
             var n = new Notification(title, {
                 body: body,
-                icon: 'https://www.google.com/s2/favicons?domain=banbansports.com&sz=128',
-                badge: 'https://www.google.com/s2/favicons?domain=banbansports.com&sz=64',
-                tag: 'banban-' + type,
+                icon: 'tsl_logo.png',
+                badge: 'tsl_logo.png',
+                tag: 'banban-' + type + '-' + Date.now(),
                 renotify: true,
-                silent: false
+                silent: false,
+                requireInteraction: true
             });
             n.onclick = function() { window.focus(); n.close(); };
-            setTimeout(function() { n.close(); }, 8000);
+            setTimeout(function() { n.close(); }, 10000);
         } catch(e) {}
     }
 
