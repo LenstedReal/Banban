@@ -571,6 +571,7 @@
                 tab.classList.add('active');
                 currentChannel = channel;
                 currentServerIndex = 0;
+                manualServerSelect = false;
                 updateServerUI();
                 
                 const ch = CHANNELS[channel];
@@ -759,17 +760,21 @@
     }
 
     function tryNextServer() {
+        // Kullanıcı elle sunucu seçtiyse otomatik atlama yapma
+        if (manualServerSelect) {
+            manualServerSelect = false;
+            loadingOverlay.classList.add('hidden');
+            showStreamError();
+            return;
+        }
         const servers = SERVER_ALTERNATIVES[currentChannel] || [];
-        console.log('Sunucu geçişi deneniyor: ' + (currentServerIndex + 1) + '/' + servers.length);
         if (currentServerIndex < servers.length - 1) {
             currentServerIndex++;
             retryCount = 0;
             updateServerUI();
-            if (hls) { hls.destroy(); hls = null; }
-            console.log('Yeni sunucu: ' + servers[currentServerIndex]);
+            if (hls) { try { hls.destroy(); } catch(e){} hls = null; }
             setupStream();
         } else {
-            console.log('Tüm sunucular denendi, bakım moduna geçiliyor');
             showMaintenance();
         }
     }
@@ -801,12 +806,15 @@
         });
     }
 
+    let manualServerSelect = false; // Kullanıcı elle sunucu seçti mi?
+
     // Window'a bağla (inline onclick erişimi için)
     window.switchServer = function(index) {
+        manualServerSelect = true;
         currentServerIndex = index;
         retryCount = 0;
         updateServerUI();
-        if (hls) { hls.destroy(); hls = null; }
+        if (hls) { try { hls.destroy(); } catch(e){} hls = null; }
         setupStream();
     };
 
@@ -1408,11 +1416,7 @@
         document.querySelectorAll('.server-item').forEach(item => {
             item.addEventListener('click', () => {
                 const idx = parseInt(item.dataset.server);
-                currentServerIndex = idx;
-                retryCount = 0;
-                updateServerUI();
-                if (hls) { hls.destroy(); hls = null; }
-                setupStream();
+                switchServer(idx);
             });
         });
         
