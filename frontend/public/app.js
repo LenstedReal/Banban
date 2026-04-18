@@ -54,17 +54,13 @@
 
     // Sunucu yedekleri - AYNI KANAL, FARKLI KAYNAK (bağlantı kesilince geçiş)
     const SERVER_ALTERNATIVES = {
-        demo1: [STREAMS.test, STREAMS.test, STREAMS.test],
-        demo2: [STREAMS.demo, STREAMS.demo, STREAMS.demo],
-        trt1: [STREAMS.trt1, STREAMS.trt1, STREAMS.trt1],
-        trthaber: [STREAMS.trthaber, STREAMS.trthaber, STREAMS.trthaber],
+        demo1: [STREAMS.test, STREAMS.akamai, STREAMS.apple],
+        demo2: [STREAMS.demo, STREAMS.akamai, STREAMS.apple],
+        trt1: [STREAMS.trt1, STREAMS.trt1, STREAMS.akamai],
+        trthaber: [STREAMS.trthaber, STREAMS.trthaber, STREAMS.akamai],
         trtspor: [STREAMS.trtspor, STREAMS.akamai, STREAMS.test],
-        tv8: [STREAMS.tv8, STREAMS.tv8, STREAMS.tv8],
-        bein1: [
-            STREAMS.bein1,
-            STREAMS.bein1_video,
-            STREAMS.bein1_video
-        ]
+        tv8: [STREAMS.tv8, STREAMS.tv8, STREAMS.akamai],
+        bein1: [STREAMS.bein1, STREAMS.bein1_video, STREAMS.bein1_video]
     };
 
     // ============================================
@@ -587,8 +583,6 @@
                     return;
                 }
                 hideAdOverlay();
-                // REKLAM kanalına her tıklamada sıradaki reklama geç
-                if (ch && ch.isAd) nextAd();
                 setupStream();
             });
         });
@@ -640,26 +634,24 @@
             video.muted = isMuted;
             video.style.filter = 'none';
             var ad = getAd();
-            // Önce webm, sonra mp4, son çare orijinal PUBG
+            nextAd(); // Sıradaki reklama geç (bir sonraki tıklamada farklı göster)
+            // Önce webm, sonra mp4
             video.src = ad.vid + '.webm';
             video.onerror = function() {
-                video.onerror = function() {
-                    video.onerror = function() { video.onerror = null; video.src = 'reklam.mp4'; };
-                    video.src = 'reklam.webm';
-                };
+                video.onerror = null;
                 video.src = ad.vid + '.mp4';
             };
-            video.onended = function() { window.open(ad.url, '_blank'); nextAd(); };
+            video.onended = function() { window.open(ad.url, '_blank'); };
             video.load();
             video.play().catch(function() {});
             isPlaying = true;
             unmuteBtn.classList.toggle('hidden', !isMuted);
             updateQualityMenu([]);
-            // Overlay
+            // Overlay - önceki overlayleri temizle
             hideAdOverlay();
             var ov = document.createElement('div'); ov.id = 'adOverlay';
             ov.setAttribute('data-testid', 'ad-overlay');
-            ov.style.cssText = 'position:absolute;top:15px;left:15px;z-index:30;padding:8px 16px;background:linear-gradient(135deg,'+ad.color+'ee,rgba(170,0,255,0.9));font-family:Orbitron,sans-serif;font-size:12px;font-weight:700;color:#fff;letter-spacing:2px;border:1px solid rgba(255,255,255,0.4);box-shadow:0 0 20px '+ad.color+'80;cursor:pointer;';
+            ov.style.cssText = 'position:absolute;top:15px;left:60px;z-index:20;padding:8px 16px;background:linear-gradient(135deg,'+ad.color+'ee,rgba(170,0,255,0.9));font-family:Orbitron,sans-serif;font-size:12px;font-weight:700;color:#fff;letter-spacing:2px;border:1px solid rgba(255,255,255,0.4);box-shadow:0 0 20px '+ad.color+'80;cursor:pointer;';
             ov.textContent = 'REKLAM - ' + ad.name;
             ov.onclick = function() { window.open(ad.url, '_blank'); };
             document.querySelector('.video-wrapper').appendChild(ov);
@@ -844,8 +836,8 @@
     function showAdOverlay() { /* inline olarak taşındı */ }
 
     function hideAdOverlay() {
-        const el = document.getElementById('adOverlay');
-        if (el) el.remove();
+        var els = document.querySelectorAll('#adOverlay');
+        els.forEach(function(el) { el.remove(); });
     }
 
     // ============================================
