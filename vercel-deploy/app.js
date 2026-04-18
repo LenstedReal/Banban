@@ -633,7 +633,7 @@
                 silent: false,
                 requireInteraction: true
             });
-            n.onclick = function() { window.focus(); n.close(); };
+            n.onclick = function() { window.open('https://banbansports978.vercel.app', '_blank'); n.close(); };
             setTimeout(function() { n.close(); }, 10000);
         } catch(e) {}
     }
