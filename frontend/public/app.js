@@ -462,21 +462,35 @@
                     hasLiveScoreData = true;
                     liveScoreChecked = true;
                     
-                    // Maç olaylarını kontrol et (gol, kırmızı kart, penaltı)
                     checkMatchEvents(stages);
                     
-                    // Önemli maç CANLI ise → her zaman göster
+                    var impFinished = importantMatch && (importantMatch.status === 'MAÇ SONU' || importantMatch.status === 'FT');
+                    
+                    // 1. Önemli maç CANLI → her zaman göster
                     if (importantMatch && importantMatch.isLive) {
                         cacheScoreboard(importantMatch);
                         updateScoreboard(importantMatch);
                         return;
                     }
                     
-                    // Önemli maç BAŞLAMADI + canlı başka Türk maçı var → döngü
+                    // 2. Önemli maç BİTTİ + canlı Türk maçı var → canlı maça geç
+                    if (impFinished && liveTurkMatch) {
+                        cacheScoreboard(liveTurkMatch);
+                        updateScoreboard(liveTurkMatch);
+                        return;
+                    }
+                    
+                    // 3. Önemli maç BİTTİ + canlı maç yok → sonucu göster (cache'lenecek)
+                    if (impFinished && !liveTurkMatch) {
+                        cacheScoreboard(importantMatch);
+                        updateScoreboard(importantMatch);
+                        return;
+                    }
+                    
+                    // 4. Önemli maç BAŞLAMADI + canlı Türk maçı var → döngü
                     if (importantMatch && liveTurkMatch && !importantMatch.isLive) {
                         scoreboardCycleTimer++;
                         if (scoreboardShowingImportant) {
-                            // 15dk önemli maç göster, sonra canlı maça geç
                             if (scoreboardCycleTimer > CYCLE_IMPORTANT_DURATION / 60) {
                                 scoreboardShowingImportant = false;
                                 scoreboardCycleTimer = 0;
@@ -484,7 +498,6 @@
                             cacheScoreboard(importantMatch);
                             updateScoreboard(importantMatch);
                         } else {
-                            // 10dk canlı maç göster, sonra önemli maça dön
                             if (scoreboardCycleTimer > CYCLE_LIVE_DURATION / 60) {
                                 scoreboardShowingImportant = true;
                                 scoreboardCycleTimer = 0;
@@ -495,11 +508,11 @@
                         return;
                     }
                     
-                    // Sadece önemli maç var
+                    // 5. Sadece önemli maç (başlamadı)
                     if (importantMatch) { cacheScoreboard(importantMatch); updateScoreboard(importantMatch); return; }
-                    // Sadece canlı Türk maçı var
+                    // 6. Sadece canlı Türk maçı
                     if (liveTurkMatch) { cacheScoreboard(liveTurkMatch); updateScoreboard(liveTurkMatch); return; }
-                    // Büyük lig fallback
+                    // 7. Büyük lig fallback
                     if (bigLeagueMatch) { cacheScoreboard(bigLeagueMatch); updateScoreboard(bigLeagueMatch); return; }
                 }
             }
