@@ -269,7 +269,10 @@
     }
 
     function sendMatchAlert(title, body, type) {
-        // Sesli bildirim
+        // 1. EKRAN BİLDİRİMİ (Maçkolik tarzı - ekranın üstünden kayarak gelir)
+        showInAppNotification(title, body, type);
+        
+        // 2. SESLİ BİLDİRİM
         try {
             var ctx = new (window.AudioContext || window.webkitAudioContext)();
             var osc = ctx.createOscillator();
@@ -292,8 +295,96 @@
             }
         } catch(e) {}
         
-        // Push notification
+        // 3. PUSH NOTIFICATION (tarayıcı bildirimi)
         sendNotification(title, body, type);
+    }
+
+    // ============================================
+    // MAÇKOLİK TARZI EKRAN BİLDİRİMİ
+    // ============================================
+    var notifQueue = [];
+    var notifShowing = false;
+
+    function showInAppNotification(title, body, type) {
+        notifQueue.push({title: title, body: body, type: type});
+        if (!notifShowing) processNotifQueue();
+    }
+
+    function processNotifQueue() {
+        if (notifQueue.length === 0) { notifShowing = false; return; }
+        notifShowing = true;
+        var item = notifQueue.shift();
+        
+        var icons = {
+            goal: '<svg viewBox="0 0 24 24" width="32" height="32" fill="#fff"><circle cx="12" cy="12" r="10" fill="none" stroke="#fff" stroke-width="2"/><path d="M12 2l1.5 4.5h4.7l-3.8 2.8 1.4 4.5L12 11l-3.8 2.8 1.4-4.5-3.8-2.8h4.7z" fill="#fff"/></svg>',
+            redcard: '<svg viewBox="0 0 24 24" width="32" height="32"><rect x="5" y="2" width="14" height="20" rx="2" fill="#ff0040"/></svg>',
+            penalty: '<svg viewBox="0 0 24 24" width="32" height="32" fill="#fff"><circle cx="12" cy="12" r="10" fill="none" stroke="#FFD700" stroke-width="2"/><text x="12" y="16" text-anchor="middle" font-size="12" fill="#FFD700" font-weight="bold">P</text></svg>',
+            yellowcard: '<svg viewBox="0 0 24 24" width="32" height="32"><rect x="5" y="2" width="14" height="20" rx="2" fill="#FFD700"/></svg>'
+        };
+        
+        var colors = {
+            goal: 'linear-gradient(135deg, #00ff88, #00cc66)',
+            redcard: 'linear-gradient(135deg, #ff0040, #cc0033)',
+            penalty: 'linear-gradient(135deg, #FFD700, #FFA500)',
+            yellowcard: 'linear-gradient(135deg, #FFD700, #FFA500)'
+        };
+
+        var banner = document.createElement('div');
+        banner.className = 'match-notif-banner';
+        banner.style.cssText = 'position:fixed;top:-120px;left:50%;transform:translateX(-50%);z-index:99999;' +
+            'width:92%;max-width:420px;padding:14px 18px;border-radius:16px;' +
+            'background:' + (colors[item.type] || colors.goal) + ';' +
+            'box-shadow:0 8px 32px rgba(0,0,0,0.5),0 0 20px ' + (item.type === 'goal' ? 'rgba(0,255,136,0.4)' : item.type === 'redcard' ? 'rgba(255,0,64,0.4)' : 'rgba(255,215,0,0.4)') + ';' +
+            'display:flex;align-items:center;gap:14px;cursor:pointer;' +
+            'transition:top 0.5s cubic-bezier(0.34,1.56,0.64,1);' +
+            'font-family:VT323,monospace;';
+
+        banner.innerHTML = '<div style="flex-shrink:0;">' + (icons[item.type] || icons.goal) + '</div>' +
+            '<div style="flex:1;min-width:0;">' +
+            '<div style="font-size:18px;font-weight:900;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.3);letter-spacing:2px;">' + item.title + '</div>' +
+            '<div style="font-size:14px;color:rgba(255,255,255,0.9);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + item.body + '</div>' +
+            '</div>' +
+            '<div style="flex-shrink:0;font-size:11px;color:rgba(255,255,255,0.6);">banbansports</div>';
+
+        document.body.appendChild(banner);
+
+        // Animasyon: yukarıdan kayarak gel
+        setTimeout(function() { banner.style.top = '16px'; }, 50);
+
+        // Gol için ekstra efekt: ekran flash
+        if (item.type === 'goal') {
+            var flash = document.createElement('div');
+            flash.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:99998;' +
+                'background:rgba(0,255,136,0.15);pointer-events:none;' +
+                'animation:goalFlash 0.6s ease-out forwards;';
+            document.body.appendChild(flash);
+            setTimeout(function() { flash.remove(); }, 600);
+        }
+
+        // Kırmızı kart için ekran flash
+        if (item.type === 'redcard') {
+            var flash = document.createElement('div');
+            flash.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:99998;' +
+                'background:rgba(255,0,64,0.15);pointer-events:none;' +
+                'animation:goalFlash 0.6s ease-out forwards;';
+            document.body.appendChild(flash);
+            setTimeout(function() { flash.remove(); }, 600);
+        }
+
+        // 5sn sonra yukarı kayarak git
+        setTimeout(function() {
+            banner.style.top = '-120px';
+            setTimeout(function() {
+                banner.remove();
+                processNotifQueue();
+            }, 500);
+        }, 5000);
+
+        // Tıklayınca kapat
+        banner.onclick = function() {
+            banner.style.top = '-120px';
+            setTimeout(function() { banner.remove(); processNotifQueue(); }, 300);
+        };
     }
 
     async function fetchLiveScore() {
