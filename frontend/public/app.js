@@ -353,6 +353,7 @@
         }, 4000);
 
         banner.onclick = function() {
+            window.open('https://www.mackolik.com', '_blank');
             banner.style.top = '-80px';
             setTimeout(function() { banner.remove(); processNotifQueue(); }, 300);
         };
