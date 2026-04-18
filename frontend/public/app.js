@@ -1,4 +1,17 @@
     // ============================================
+    // PERFORMANCE OPTIMIZATIONS (v12 Engine)
+    // ============================================
+    // Passive scroll listeners
+    document.addEventListener('touchstart', function(){}, {passive: true});
+    document.addEventListener('touchmove', function(){}, {passive: true});
+    document.addEventListener('wheel', function(){}, {passive: true});
+    // Reduce layout thrashing - batch DOM reads
+    var _rafQueue = [];
+    function batchDOM(fn) { _rafQueue.push(fn); if (_rafQueue.length === 1) requestAnimationFrame(function() { var q = _rafQueue.slice(); _rafQueue.length = 0; q.forEach(function(f){f();}); }); }
+    // Image decode optimization
+    if ('connection' in navigator && navigator.connection.saveData) { document.documentElement.classList.add('save-data'); }
+
+    // ============================================
     // BACKEND URL
     // ============================================
     const BACKEND_URL = (function() {
@@ -488,10 +501,10 @@
         // Loading timeout - 15s sonra hala yüklenemezse hata göster
         const loadTimeout = setTimeout(() => {
             if (!loadingOverlay.classList.contains('hidden')) {
-                console.log('Stream yükleme zaman aşımı');
+                loadingOverlay.classList.add('hidden');
                 tryNextServer();
             }
-        }, 15000);
+        }, 10000);
 
         // REKLAM - her seferinde farklı oyunun videosu oynar
         if (channel.isAd) {
@@ -559,10 +572,12 @@
 
         if (Hls.isSupported()) {
             hls = new Hls({
-                enableWorker: true, lowLatencyMode: false,
-                backBufferLength: 30, maxBufferLength: 30, maxMaxBufferLength: 60,
-                manifestLoadingTimeOut: 20000, manifestLoadingMaxRetry: 3,
-                levelLoadingTimeOut: 20000, fragLoadingTimeOut: 30000
+                enableWorker: true, lowLatencyMode: true,
+                backBufferLength: 15, maxBufferLength: 20, maxMaxBufferLength: 40,
+                manifestLoadingTimeOut: 10000, manifestLoadingMaxRetry: 2,
+                levelLoadingTimeOut: 10000, fragLoadingTimeOut: 15000,
+                startLevel: -1, abrEwmaDefaultEstimate: 500000,
+                testBandwidth: true, progressive: true
             });
 
             hls.loadSource(streamUrl);
