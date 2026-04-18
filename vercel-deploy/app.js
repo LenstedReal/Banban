@@ -315,7 +315,23 @@
         notifShowing = true;
         var item = notifQueue.shift();
         
-        var accentColor = item.type === 'goal' ? '#00ff88' : item.type === 'redcard' ? '#ff0040' : '#FFD700';
+        var accentColor = item.type === 'goal' ? '#00ff88' : item.type === 'redcard' ? '#ff0040' : item.type === 'yellowcard' ? '#FFD700' : '#00d4ff';
+
+        // İkonlar
+        var iconSvg = '';
+        if (item.type === 'goal') {
+            // Top - yıldızlardan oluşan futbol topu
+            iconSvg = '<svg width="22" height="22" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#00ff88" stroke-width="1.5"/><polygon points="12,3 13.5,8 18.5,8 14.5,11.5 16,17 12,13.5 8,17 9.5,11.5 5.5,8 10.5,8" fill="#00ff88"/></svg>';
+        } else if (item.type === 'redcard') {
+            // Kırmızı kart
+            iconSvg = '<svg width="22" height="22" viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="2" fill="#ff0040" stroke="#ff4070" stroke-width="0.5"/></svg>';
+        } else if (item.type === 'yellowcard') {
+            // Sarı kart
+            iconSvg = '<svg width="22" height="22" viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="2" fill="#FFD700" stroke="#FFA500" stroke-width="0.5"/></svg>';
+        } else if (item.type === 'penalty') {
+            // Ceza sahası - kale direği
+            iconSvg = '<svg width="22" height="22" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="2" fill="#00d4ff"/><rect x="3" y="4" width="2" height="14" fill="#00d4ff"/><rect x="19" y="4" width="2" height="14" fill="#00d4ff"/><circle cx="12" cy="14" r="3" fill="none" stroke="#00d4ff" stroke-width="1.5"/><line x1="12" y1="17" x2="12" y2="21" stroke="#00d4ff" stroke-width="1.5"/></svg>';
+        }
 
         var banner = document.createElement('div');
         banner.className = 'match-notif-banner';
@@ -327,7 +343,7 @@
             'transition:top 0.4s cubic-bezier(0.34,1.56,0.64,1);' +
             'font-family:VT323,monospace;backdrop-filter:blur(10px);';
 
-        var dot = '<div style="width:8px;height:8px;border-radius:50%;background:' + accentColor + ';flex-shrink:0;box-shadow:0 0 8px ' + accentColor + ';"></div>';
+        var dot = '<div style="flex-shrink:0;display:flex;align-items:center;">' + iconSvg + '</div>';
         
         banner.innerHTML = dot +
             '<div style="flex:1;min-width:0;">' +
