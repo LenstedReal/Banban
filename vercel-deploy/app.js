@@ -943,21 +943,14 @@
     }
 
     function startCast() {
-        // Android: Bluetooth ayarlarına yönlendir
+        // Android: Cast/Bluetooth ayarlarına yönlendir
         if (/android/i.test(navigator.userAgent)) {
-            // Önce Remote Playback API dene
             if (video.remote && typeof video.remote.prompt === 'function') {
-                video.remote.prompt().catch(function() {
-                    // Bluetooth ayarlarına yönlendir
-                    try { window.location.href = 'intent://settings/bluetooth#Intent;scheme=android-app;end'; } catch(e) {}
-                    try { window.open('intent:#Intent;action=android.settings.BLUETOOTH_SETTINGS;end', '_blank'); } catch(e) {}
-                });
-            } else {
-                try { window.open('intent:#Intent;action=android.settings.CAST_SETTINGS;end', '_blank'); } catch(e) {
-                    try { window.open('intent:#Intent;action=android.settings.BLUETOOTH_SETTINGS;end', '_blank'); } catch(e2) {
-                        alert('Bildirim panelini aşağı indirip "Yayınla" veya "Smart View" butonuna tıklayın.');
-                    }
-                }
+                video.remote.prompt().catch(function() {});
+                return;
+            }
+            try { window.open('intent:#Intent;action=android.settings.CAST_SETTINGS;end', '_blank'); } catch(e) {
+                try { window.open('intent:#Intent;action=android.settings.BLUETOOTH_SETTINGS;end', '_blank'); } catch(e2) {}
             }
             return;
         }
@@ -968,18 +961,12 @@
         }
         // Presentation API
         if (navigator.presentation && navigator.presentation.defaultRequest) {
-            navigator.presentation.defaultRequest.start().catch(function() {
-                alert('Tarayıcınızdan: Menü > Yayınla (Cast) seçeneğini kullanın.');
-            });
+            navigator.presentation.defaultRequest.start().catch(function() {});
             return;
         }
-        // Fallback
+        // Remote Playback API
         if (video.remote && typeof video.remote.prompt === 'function') {
-            video.remote.prompt().catch(function() {
-                alert('Tarayıcınızdan: Menü > Yayınla (Cast) seçeneğini kullanın.');
-            });
-        } else {
-            alert('Tarayıcınızdan: Menü > Yayınla (Cast) seçeneğini kullanın.');
+            video.remote.prompt().catch(function() {});
         }
     }
 
@@ -1102,35 +1089,13 @@
     // ============================================
     // CRASH / FREEZE DETECTION (SMART)
     // ============================================
-    const STALL_THRESHOLD = 5;  // 5 seconds = short freeze
-    const CRASH_THRESHOLD = 15; // 15 seconds = long crash -> maintenance
+    const STALL_THRESHOLD = 15;  // 15 saniye = kısa donma göstergesi
+    const CRASH_THRESHOLD = 45; // 45 saniye = uzun crash -> sunucu geçişi
 
     function startCrashDetection() {
         if (crashCheckInterval) clearInterval(crashCheckInterval);
         stallCount = 0;
         lastPlaybackTime = video.currentTime;
-
-        // Video event-based detection (daha güvenilir)
-        video.addEventListener('waiting', () => {
-            console.log('Video buffering...');
-        });
-        
-        video.addEventListener('stalled', () => {
-            console.log('Video stalled - ağ sorunu olabilir');
-        });
-
-        video.addEventListener('error', (e) => {
-            console.log('Video error:', e);
-            // m3u8 çökmesi, 404, 403 gibi durumlar
-            if (video.error) {
-                const code = video.error.code;
-                // MEDIA_ERR_NETWORK veya MEDIA_ERR_SRC_NOT_SUPPORTED
-                if (code === 2 || code === 4) {
-                    console.log('Ciddi video hatası - sunucu geçişi deneniyor');
-                    tryNextServer();
-                }
-            }
-        });
 
         crashCheckInterval = setInterval(() => {
             if (!video || video.paused || !isPlaying) return;
