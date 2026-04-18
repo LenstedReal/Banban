@@ -39,26 +39,25 @@
     }
 
     const STREAMS = {
-        test: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+        // TRAILER yayınları (gerçek film trailer'ları - HLS)
+        sintel: 'https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8',
+        tears_of_steel: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
+        big_buck_bunny: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
         trt1: 'https://tv-trt1.medya.trt.com.tr/master.m3u8',
         trthaber: 'https://tv-trthaber.medya.trt.com.tr/master.m3u8',
         trtspor: 'https://tv-trtspor1.medya.trt.com.tr/master.m3u8',
         tv8: 'https://tv8.daioncdn.net/tv8/tv8.m3u8?app=7ddc255a-ef47-4e81-ab14-c0e5f2949788&ce=3',
-        demo: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
-        demo3: 'demo3',
         // EU Akamai canlı test yayını (Kopenhag CDN) - Sunucu 3 için gerçek EU yedek
         akamai_eu: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
-        // Mux test (yedek fallback)
-        mux_test: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
         bein1_video: BEIN1_VIDEO,
         bein1: (BACKEND_URL || '') + '/api/bein/master.m3u8?video=' + encodeURIComponent(BEIN1_VIDEO) + '&audio=' + encodeURIComponent(BEIN1_AUDIO)
     };
 
-    // Sunucu yedekleri - AYNI KANAL, FARKLI KAYNAK (bağlantı kesilince geçiş)
-    // Sunucu 3 (EU) için Apple bipbop yerine Akamai Kopenhag CDN kullanılıyor
+    // Sunucu yedekleri - Sunucu 1 = Sunucu 2 (aynı primary), Sunucu 3 = EU Akamai farklı
     const SERVER_ALTERNATIVES = {
-        demo1: [STREAMS.test, STREAMS.mux_test, STREAMS.akamai_eu],
-        demo2: [STREAMS.demo, STREAMS.demo, STREAMS.akamai_eu],
+        demo1: [STREAMS.sintel, STREAMS.sintel, STREAMS.akamai_eu],
+        demo2: [STREAMS.tears_of_steel, STREAMS.tears_of_steel, STREAMS.akamai_eu],
+        demo3: [STREAMS.big_buck_bunny, STREAMS.big_buck_bunny, STREAMS.akamai_eu],
         trt1: [STREAMS.trt1, STREAMS.trt1, STREAMS.akamai_eu],
         trthaber: [STREAMS.trthaber, STREAMS.trthaber, STREAMS.akamai_eu],
         trtspor: [STREAMS.trtspor, STREAMS.trtspor, STREAMS.akamai_eu],
@@ -82,10 +81,9 @@
     function nextAd(){var ads=getAds();var i=parseInt(sessionStorage.getItem('bb_adi')||'0')+1;if(i>=ads.length)i=0;sessionStorage.setItem('bb_adi',String(i));}
 
     const CHANNELS = {
-        demo1: { name: 'DEMO 1', status: 'online', stream: STREAMS.test },
-        demo2: { name: 'DEMO 2', status: 'online', stream: STREAMS.demo, subtitles: 'tears-of-steel-tr.vtt' },
-        demo3: { name: 'DEMO 3', status: 'online', isLocalVideo: true, videoFile: 'demo3' },
-        reklam: { name: 'REKLAM', status: 'online', isAd: true },
+        demo1: { name: 'SİNTEL TRAILER', status: 'online', stream: STREAMS.sintel, isTrailer: true },
+        demo2: { name: 'TEARS OF STEEL TRAILER', status: 'online', stream: STREAMS.tears_of_steel, subtitles: 'tears-of-steel-tr.vtt', subLabel: 'Türkçe', subLang: 'tr', isTrailer: true },
+        demo3: { name: 'BIG BUCK BUNNY TRAILER', status: 'online', stream: STREAMS.big_buck_bunny, subtitles: 'big-buck-bunny-en.vtt', subLabel: 'English', subLang: 'en', isTrailer: true },
         trt1: { name: 'TRT 1', status: 'online', stream: STREAMS.trt1 },
         trthaber: { name: 'TRT HABER', status: 'online', stream: STREAMS.trthaber },
         tv8: { name: 'TV 8', status: 'online', stream: STREAMS.tv8 },
@@ -729,10 +727,6 @@
         if (!notificationsEnabled) return;
         var t1 = match.team1 || '---';
         var t2 = match.team2 || '---';
-        
-        // SADECE Türk maçları için bildirim gönder (yabancı maç leak'i engelle)
-        if (!isTurkish(t1) && !isTurkish(t2)) return;
-        
         var s1 = match.score1 || 0;
         var s2 = match.score2 || 0;
         var key = t1 + '-' + t2 + '-' + status + '-' + s1 + '-' + s2;
@@ -870,10 +864,101 @@
     // ============================================
     const MAX_RETRIES = 3;
     let streamSessionId = 0; // Her kanal geçişinde artar, eski callback'leri engeller
+    var _prerollDoneThisSession = {}; // Kanal başına session'da 1 kez preroll
+    var _prerollActive = false;
 
-    function setupStream() {
+    // Pre-roll reklam: kanal başlamadan önce oyun reklamı, ATLAMA YOK, bitince yayın başlar
+    function playPrerollAd(onComplete) {
+        _prerollActive = true;
+        
+        // Overlay temizle
+        loadingOverlay.classList.add('hidden');
+        errorOverlay.classList.add('hidden');
+        maintenanceOverlay.classList.add('hidden');
+        hideFreezeOverlay();
+        
+        // Önceki stream temizle
+        if (hls) { try { hls.destroy(); } catch(e){} hls = null; }
+        if (crashCheckInterval) { clearInterval(crashCheckInterval); crashCheckInterval = null; }
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+        video.onerror = null;
+        video.onended = null;
+        
+        var ad = getAd();
+        nextAd();
+        video.loop = false;
+        video.muted = isMuted;
+        video.style.filter = 'none';
+        video.src = ad.vid + '.webm';
+        video.onerror = function() { video.onerror = null; video.src = ad.vid + '.mp4'; };
+        video.play().catch(function(){});
+        isPlaying = true;
+        unmuteBtn.classList.toggle('hidden', !isMuted);
+        updateQualityMenu([]);
+        
+        // REKLAM badge - tıklanabilir, Play Store'a gider
+        hideAdOverlay();
+        var ov = document.createElement('div');
+        ov.id = 'adOverlay';
+        ov.setAttribute('data-testid', 'preroll-overlay');
+        ov.style.cssText = 'position:absolute;top:15px;left:60px;z-index:20;padding:8px 16px;background:linear-gradient(135deg,'+ad.color+'ee,rgba(170,0,255,0.9));font-family:Orbitron,sans-serif;font-size:12px;font-weight:700;color:#fff;letter-spacing:2px;border:1px solid rgba(255,255,255,0.4);box-shadow:0 0 20px '+ad.color+'80;cursor:pointer;';
+        ov.textContent = 'REKLAM - ' + ad.name + ' (TIKLA)';
+        ov.onclick = function() { window.open(ad.url, '_blank'); };
+        document.querySelector('.video-wrapper').appendChild(ov);
+        
+        // Yayın başlıyor göstergesi (sağda, sadece bilgi amaçlı)
+        var info = document.createElement('div');
+        info.id = 'prerollInfo';
+        info.setAttribute('data-testid', 'preroll-info');
+        info.style.cssText = 'position:absolute;top:15px;right:15px;z-index:25;padding:8px 14px;background:rgba(0,0,0,0.75);color:var(--cyan);font-family:VT323,monospace;font-size:12px;border:1px solid var(--cyan);letter-spacing:1px;';
+        info.textContent = 'YAYIN BAŞLIYOR...';
+        document.querySelector('.video-wrapper').appendChild(info);
+        
+        // Ekran tıklaması da Play Store'a yönlendirsin
+        var adClickLayer = document.createElement('div');
+        adClickLayer.id = 'prerollClickLayer';
+        adClickLayer.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:50px;z-index:15;cursor:pointer;';
+        adClickLayer.onclick = function() { window.open(ad.url, '_blank'); };
+        document.querySelector('.video-wrapper').appendChild(adClickLayer);
+        
+        var MAX_AD_DURATION = 60000; // 60sn güvenlik limiti (reklam hang durumunda)
+        var done = false;
+        
+        function finish() {
+            if (done) return;
+            done = true;
+            clearTimeout(maxTimer);
+            hideAdOverlay();
+            var el = document.getElementById('prerollInfo');
+            if (el) el.remove();
+            var cl = document.getElementById('prerollClickLayer');
+            if (cl) cl.remove();
+            video.onended = null;
+            video.onerror = null;
+            _prerollActive = false;
+            if (onComplete) onComplete();
+        }
+        
+        // Reklam bitince (video.onended) otomatik yayına geç
+        video.onended = finish;
+        
+        // Güvenlik: video yüklenmezse veya çok uzunsa 12sn sonra geç
+        var maxTimer = setTimeout(finish, MAX_AD_DURATION);
+    }
+
+    function setupStream(skipPreroll) {
         const channel = CHANNELS[currentChannel];
         if (!channel || channel.status === 'maintenance') { showMaintenance(); return; }
+
+        // PRE-ROLL REKLAMI: SADECE gerçek yayınlarda (TRT, beIN vb.). Trailerlerde (demo*) yok.
+        var isBroadcast = !channel.isAd && !channel.isLocalVideo && !channel.isTrailer;
+        if (!skipPreroll && isBroadcast && !_prerollDoneThisSession[currentChannel]) {
+            _prerollDoneThisSession[currentChannel] = true;
+            playPrerollAd(function() { setupStream(true); });
+            return;
+        }
 
         // Clear overlays
         loadingOverlay.classList.remove('hidden');
@@ -1004,7 +1089,7 @@
                         tryNextServer();
                     } else if (retryCount < MAX_RETRIES) {
                         retryCount++;
-                        setTimeout(() => { if (hls) { hls.destroy(); hls = null; } setupStream(); }, 2000);
+                        setTimeout(() => { if (hls) { hls.destroy(); hls = null; } setupStream(true); }, 2000);
                     } else {
                         tryNextServer();
                     }
@@ -1095,7 +1180,9 @@
         const channel = CHANNELS[currentChannel];
         if (channel && channel.subtitles) {
             const track = document.createElement('track');
-            track.kind = 'subtitles'; track.label = 'Turkce'; track.srclang = 'tr';
+            track.kind = 'subtitles';
+            track.label = channel.subLabel || 'Türkçe';
+            track.srclang = channel.subLang || 'tr';
             track.src = channel.subtitles; track.default = true;
             video.appendChild(track);
             setTimeout(() => { if (video.textTracks.length > 0) video.textTracks[0].mode = 'showing'; }, 500);
