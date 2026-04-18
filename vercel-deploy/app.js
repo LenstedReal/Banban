@@ -73,11 +73,11 @@
     var ADS = [
         { name: 'PUBG MOBILE', url: 'https://play.google.com/store/apps/details?id=com.tencent.ig', color: '#FF6600', vid: 'ad_pubg' },
         { name: 'eFootball 2026', url: 'https://play.google.com/store/apps/details?id=jp.konami.pesam', color: '#0066FF', vid: 'ad_efootball' },
-        { name: 'Call of Duty Mobile', url: 'https://play.google.com/store/apps/details?id=com.activision.callofduty.shooter', color: '#00CC44', vid: 'ad_cod' },
-        { name: 'Lords Mobile', url: 'https://play.google.com/store/apps/details?id=com.igg.android.lordsmobile', color: '#CC0000', vid: 'ad_lords' }
+        { name: 'Call of Duty: Warzone', url: 'https://play.google.com/store/apps/details?id=com.activision.callofduty.warzone', color: '#00CC44', vid: 'ad_cod' },
+        { name: 'Civilization VI', url: 'https://play.google.com/store/apps/details?id=com.aspyr.civ6', color: '#CC0000', vid: 'ad_lords' }
     ];
-    function shuffleAds(){var a=ADS.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}sessionStorage.setItem('bb_ads',JSON.stringify(a));sessionStorage.setItem('bb_adi','0');sessionStorage.setItem('bb_adv','3');return a;}
-    function getAds(){var v=sessionStorage.getItem('bb_adv');if(v!=='3'){shuffleAds();}var s=sessionStorage.getItem('bb_ads');return s?JSON.parse(s):shuffleAds();}
+    function shuffleAds(){var a=ADS.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}sessionStorage.setItem('bb_ads',JSON.stringify(a));sessionStorage.setItem('bb_adi','0');sessionStorage.setItem('bb_adv','4');return a;}
+    function getAds(){var v=sessionStorage.getItem('bb_adv');if(v!=='4'){shuffleAds();}var s=sessionStorage.getItem('bb_ads');return s?JSON.parse(s):shuffleAds();}
     function getAd(){var ads=getAds();var i=parseInt(sessionStorage.getItem('bb_adi')||'0');if(i>=ads.length)i=0;return ads[i];}
     function nextAd(){var ads=getAds();var i=parseInt(sessionStorage.getItem('bb_adi')||'0')+1;if(i>=ads.length)i=0;sessionStorage.setItem('bb_adi',String(i));}
 
@@ -166,7 +166,7 @@
     function startHttpPolling() {
         if (httpPollingInterval) return;
         fetchLiveScore();
-        httpPollingInterval = setInterval(fetchLiveScore, 60000);
+        httpPollingInterval = setInterval(fetchLiveScore, 15000); // 15sn anlık güncelleme
     }
 
     // ============================================
@@ -197,13 +197,107 @@
     }
 
     // Scoreboard döngü state'i
-    var scoreboardImportantMatch = null; // En önemli maç (GS, FB, BJK, TS)
-    var scoreboardLiveMatch = null;      // Canlı oynanan herhangi bir Türk maçı
+    var scoreboardImportantMatch = null;
+    var scoreboardLiveMatch = null;
     var scoreboardShowingImportant = true;
     var scoreboardCycleTimer = 0;
-    var CYCLE_IMPORTANT_DURATION = 900; // 15dk (saniye)
-    var CYCLE_LIVE_DURATION = 600;      // 10dk (saniye)
+    var CYCLE_IMPORTANT_DURATION = 900;
+    var CYCLE_LIVE_DURATION = 600;
     var bigClubs = ['galatasaray','fenerbah','besiktas','beşiktaş','trabzonspor'];
+    
+    // === OFFLINE CACHE: Son maç verisini localStorage'da tut ===
+    function cacheScoreboard(match) {
+        try { localStorage.setItem('bb_last_match', JSON.stringify(match)); } catch(e) {}
+    }
+    function getCachedScoreboard() {
+        try { var s = localStorage.getItem('bb_last_match'); return s ? JSON.parse(s) : null; } catch(e) { return null; }
+    }
+    // Sayfa açılırken cache'den yükle (internet gelmeden önce)
+    var cached = getCachedScoreboard();
+    if (cached) {
+        setTimeout(function() { if (!hasLiveScoreData) updateScoreboard(cached); }, 500);
+    }
+
+    // === MAÇKOLİK TARZI BİLDİRİM SİSTEMİ ===
+    var lastMatchEvents = {}; // {matchKey: {goals: n, reds: n, yellows: n, pens: n}}
+    
+    function checkMatchEvents(stages) {
+        if (!notificationsEnabled) return;
+        for (var i = 0; i < stages.length; i++) {
+            var stg = stages[i], evts = stg.Events || [];
+            for (var j = 0; j < evts.length; j++) {
+                var ev = evts[j];
+                var t1 = ((ev.T1||[{}])[0].Nm||''), t2 = ((ev.T2||[{}])[0].Nm||'');
+                var key = t1 + '-' + t2;
+                var eps = ev.Eps || 'NS';
+                var isLive = eps.includes("'") || eps === '1H' || eps === '2H' || eps === 'HT';
+                if (!isLive) continue;
+                
+                var s1 = ev.Tr1 || 0, s2 = ev.Tr2 || 0;
+                var yr1 = ev.Tr1OR || 0, yr2 = ev.Tr2OR || 0; // Kırmızı kart
+                var inc = ev.Incidents || [];
+                
+                var prev = lastMatchEvents[key] || { goals: 0, reds: 0, score: '0-0' };
+                var totalGoals = s1 + s2;
+                var totalReds = yr1 + yr2;
+                var prevGoals = prev.goals;
+                var prevReds = prev.reds;
+                
+                // GOL bildirimi
+                if (totalGoals > prevGoals && prevGoals > 0) {
+                    var goalTeam = (s1 > parseInt(prev.score.split('-')[0])) ? t1 : t2;
+                    sendMatchAlert('GOL!', goalTeam + '! ' + t1 + ' ' + s1 + ' - ' + s2 + ' ' + t2 + ' (' + eps + ')', 'goal');
+                }
+                
+                // KIRMIZI KART bildirimi
+                if (totalReds > prevReds) {
+                    sendMatchAlert('KIRMIZI KART!', t1 + ' ' + s1 + ' - ' + s2 + ' ' + t2, 'redcard');
+                }
+                
+                // Penaltı kontrolü (Incidents'tan)
+                for (var k = 0; k < inc.length; k++) {
+                    var incident = inc[k];
+                    if (incident && incident.IT === 36) { // Penalty
+                        var penKey = key + '-pen-' + k;
+                        if (!lastMatchEvents[penKey]) {
+                            lastMatchEvents[penKey] = true;
+                            sendMatchAlert('PENALTI!', t1 + ' vs ' + t2 + ' - Penaltı kararı!', 'penalty');
+                        }
+                    }
+                }
+                
+                lastMatchEvents[key] = { goals: totalGoals, reds: totalReds, score: s1 + '-' + s2 };
+            }
+        }
+    }
+
+    function sendMatchAlert(title, body, type) {
+        // Sesli bildirim
+        try {
+            var ctx = new (window.AudioContext || window.webkitAudioContext)();
+            var osc = ctx.createOscillator();
+            var gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            if (type === 'goal') {
+                osc.frequency.value = 880; gain.gain.value = 0.3;
+                osc.start(); osc.stop(ctx.currentTime + 0.15);
+                setTimeout(function() {
+                    var o2 = ctx.createOscillator(); o2.connect(gain); o2.frequency.value = 1100;
+                    o2.start(); o2.stop(ctx.currentTime + 0.2);
+                }, 200);
+            } else if (type === 'redcard') {
+                osc.frequency.value = 440; gain.gain.value = 0.2;
+                osc.start(); osc.stop(ctx.currentTime + 0.5);
+            } else {
+                osc.frequency.value = 660; gain.gain.value = 0.2;
+                osc.start(); osc.stop(ctx.currentTime + 0.3);
+            }
+        } catch(e) {}
+        
+        // Push notification
+        sendNotification(title, body, type);
+    }
 
     async function fetchLiveScore() {
         try {
@@ -254,8 +348,12 @@
                     hasLiveScoreData = true;
                     liveScoreChecked = true;
                     
+                    // Maç olaylarını kontrol et (gol, kırmızı kart, penaltı)
+                    checkMatchEvents(stages);
+                    
                     // Önemli maç CANLI ise → her zaman göster
                     if (importantMatch && importantMatch.isLive) {
+                        cacheScoreboard(importantMatch);
                         updateScoreboard(importantMatch);
                         return;
                     }
@@ -269,6 +367,7 @@
                                 scoreboardShowingImportant = false;
                                 scoreboardCycleTimer = 0;
                             }
+                            cacheScoreboard(importantMatch);
                             updateScoreboard(importantMatch);
                         } else {
                             // 10dk canlı maç göster, sonra önemli maça dön
@@ -276,17 +375,18 @@
                                 scoreboardShowingImportant = true;
                                 scoreboardCycleTimer = 0;
                             }
+                            cacheScoreboard(liveTurkMatch);
                             updateScoreboard(liveTurkMatch);
                         }
                         return;
                     }
                     
                     // Sadece önemli maç var
-                    if (importantMatch) { updateScoreboard(importantMatch); return; }
+                    if (importantMatch) { cacheScoreboard(importantMatch); updateScoreboard(importantMatch); return; }
                     // Sadece canlı Türk maçı var
-                    if (liveTurkMatch) { updateScoreboard(liveTurkMatch); return; }
+                    if (liveTurkMatch) { cacheScoreboard(liveTurkMatch); updateScoreboard(liveTurkMatch); return; }
                     // Büyük lig fallback
-                    if (bigLeagueMatch) { updateScoreboard(bigLeagueMatch); return; }
+                    if (bigLeagueMatch) { cacheScoreboard(bigLeagueMatch); updateScoreboard(bigLeagueMatch); return; }
                 }
             }
         } catch(e){console.log('LiveScore API hatası:',e);}
@@ -296,8 +396,12 @@
     }
 
     function showDefaultMatch() {
-        updateScoreboard({ team1: 'TÜRKİYE', team2: 'ROMANYA', score1: 0, score2: 0,
-            league: '2026 FİFA DÜNYA KUPASI ELEMELERİ', status: 'CANLI' });
+        // Önce cache'den yükle, yoksa son maç verisi göster
+        var cached = getCachedScoreboard();
+        if (cached) {
+            updateScoreboard(cached);
+        }
+        // Cache de yoksa boş bırak (Türkiye-Romanya gösterme)
     }
 
     function updateScoreboard(match) {
