@@ -129,6 +129,7 @@
         }
         .notif-toggle:hover { border-color: var(--cyan); color: var(--cyan); }
         .notif-toggle.active { border-color: var(--green); color: var(--green); background: rgba(0, 255, 136, 0.1); }
+        .notif-toggle.denied { border-color: var(--red); color: var(--red); background: rgba(255, 0, 64, 0.1); }
         .notif-toggle svg { width: 16px; height: 16px; fill: currentColor; }
         .notif-status { font-size: 9px; opacity: 0.7; }
 
@@ -395,9 +396,17 @@
             .logo-section { flex-direction: column; gap: 10px; }
             .header-right { flex-wrap: wrap; justify-content: center; }
             .logo { font-size: 20px; }
-            .team-name { font-size: 14px; }
+            .team { max-width: 120px; overflow: hidden; }
+            .team-name {
+                font-size: clamp(10px, 3.2vw, 14px);
+                letter-spacing: 1px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                display: block;
+            }
             .score { font-size: 32px; }
-            .teams-container { gap: 15px; }
+            .teams-container { gap: 12px; }
             .channel-selector { padding: 10px; }
             .channel-tabs { gap: 5px; }
             .channel-tab { padding: 6px 10px; font-size: 9px; }
@@ -413,6 +422,13 @@
             .live-indicator { font-size: 9px; }
             .live-indicator svg { width: 10px; height: 10px; }
             .video-wrapper { aspect-ratio: 16 / 9; overflow: hidden; }
+        }
+        @media (max-width: 420px) {
+            .team { max-width: 95px; }
+            .team-name { font-size: clamp(9px, 3vw, 12px); letter-spacing: 0.5px; }
+            .score { font-size: 26px; }
+            .teams-container { gap: 8px; }
+            .score-separator { font-size: 22px; }
         }
     </style>
 </head>

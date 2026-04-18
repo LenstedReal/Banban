@@ -46,20 +46,23 @@
         tv8: 'https://tv8.daioncdn.net/tv8/tv8.m3u8?app=7ddc255a-ef47-4e81-ab14-c0e5f2949788&ce=3',
         demo: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
         demo3: 'demo3',
-        akamai: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
-        apple: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
+        // EU Akamai canlı test yayını (Kopenhag CDN) - Sunucu 3 için gerçek EU yedek
+        akamai_eu: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
+        // Mux test (yedek fallback)
+        mux_test: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
         bein1_video: BEIN1_VIDEO,
         bein1: (BACKEND_URL || '') + '/api/bein/master.m3u8?video=' + encodeURIComponent(BEIN1_VIDEO) + '&audio=' + encodeURIComponent(BEIN1_AUDIO)
     };
 
     // Sunucu yedekleri - AYNI KANAL, FARKLI KAYNAK (bağlantı kesilince geçiş)
+    // Sunucu 3 (EU) için Apple bipbop yerine Akamai Kopenhag CDN kullanılıyor
     const SERVER_ALTERNATIVES = {
-        demo1: [STREAMS.test, STREAMS.test, STREAMS.apple],
-        demo2: [STREAMS.demo, STREAMS.demo, STREAMS.apple],
-        trt1: [STREAMS.trt1, STREAMS.trt1, STREAMS.apple],
-        trthaber: [STREAMS.trthaber, STREAMS.trthaber, STREAMS.apple],
-        trtspor: [STREAMS.trtspor, STREAMS.trtspor, STREAMS.apple],
-        tv8: [STREAMS.tv8, STREAMS.tv8, STREAMS.apple],
+        demo1: [STREAMS.test, STREAMS.mux_test, STREAMS.akamai_eu],
+        demo2: [STREAMS.demo, STREAMS.demo, STREAMS.akamai_eu],
+        trt1: [STREAMS.trt1, STREAMS.trt1, STREAMS.akamai_eu],
+        trthaber: [STREAMS.trthaber, STREAMS.trthaber, STREAMS.akamai_eu],
+        trtspor: [STREAMS.trtspor, STREAMS.trtspor, STREAMS.akamai_eu],
+        tv8: [STREAMS.tv8, STREAMS.tv8, STREAMS.akamai_eu],
         bein1: [STREAMS.bein1, STREAMS.bein1, STREAMS.bein1_video]
     };
 
@@ -202,6 +205,11 @@
     var CYCLE_LIVE_DURATION = 600;
     var bigClubs = ['galatasaray','fenerbah','besiktas','beşiktaş','trabzonspor'];
     
+    // Yarınki önemli Türk maçı cache'i (MAÇ SONU kalıcılığından çıkmak için)
+    var tomorrowTurkishMatch = null;
+    var tomorrowFetchInProgress = false;
+    var tomorrowLastFetch = 0;
+    
     // === OFFLINE CACHE: Son maç verisini localStorage'da tut ===
     function cacheScoreboard(match) {
         try { localStorage.setItem('bb_last_match', JSON.stringify(match)); } catch(e) {}
@@ -261,14 +269,16 @@
                 
                 if (!prev) {
                     // Maç yeni başladı bildirimi
-                    lastMatchEvents[key] = { goals: totalGoals, status: eps };
+                    lastMatchEvents[key] = { goals: totalGoals, status: eps, s1: s1, s2: s2 };
                     sendMatchAlert('MAÇ BAŞLADI!', t1 + ' vs ' + t2, 'kickoff');
                     continue;
                 }
                 
-                // GOL
+                // GOL - doğru skor farkından gol atan takımı bul
                 if (totalGoals > prev.goals) {
-                    var goalTeam = s1 > (totalGoals - s2 - (totalGoals - prev.goals)) ? t1 : t2;
+                    var ds1 = s1 - (prev.s1 || 0);
+                    var ds2 = s2 - (prev.s2 || 0);
+                    var goalTeam = ds1 > ds2 ? t1 : t2;
                     sendMatchAlert('GOL!', goalTeam + '! ' + t1 + ' ' + s1 + ' - ' + s2 + ' ' + t2 + ' (' + eps + ')', 'goal');
                 }
                 
@@ -282,7 +292,7 @@
                     sendMatchAlert('2. YARI BAŞLADI', t1 + ' ' + s1 + ' - ' + s2 + ' ' + t2, 'kickoff');
                 }
                 
-                lastMatchEvents[key] = { goals: totalGoals, status: eps };
+                lastMatchEvents[key] = { goals: totalGoals, status: eps, s1: s1, s2: s2 };
             }
             
             // MAÇ BİTTİ kontrolü
@@ -413,6 +423,67 @@
         };
     }
 
+    // Yarınki en önemli Türk maçını getir (MAÇ SONU'nda takılı kalmamak için)
+    async function fetchTomorrowTurkishMatch() {
+        // 10 dakikada bir yenile, aynı anda çoklu istek yapma
+        var now = Date.now();
+        if (tomorrowFetchInProgress) return tomorrowTurkishMatch;
+        if (tomorrowTurkishMatch && (now - tomorrowLastFetch) < 600000) return tomorrowTurkishMatch;
+        
+        tomorrowFetchInProgress = true;
+        try {
+            var tmr = new Date();
+            tmr.setDate(tmr.getDate() + 1);
+            var tmrStr = tmr.getFullYear() + String(tmr.getMonth()+1).padStart(2,'0') + String(tmr.getDate()).padStart(2,'0');
+            var resp = await fetch((BACKEND_URL || '') + '/api/livescore/date/' + tmrStr);
+            if (!resp.ok) { tomorrowFetchInProgress = false; return null; }
+            var data = await resp.json();
+            var stages = data.Stages || [];
+            
+            var bigMatch = null, bigPrio = 0;
+            var turkMatch = null, turkPrio = 0;
+            
+            for (var i = 0; i < stages.length; i++) {
+                var stg = stages[i], cn = (stg.Cnm||'').toLowerCase(), sn = (stg.Snm||'').toLowerCase();
+                var isTurkL = cn.includes('turk') || cn.includes('türk');
+                var evts = stg.Events || [];
+                for (var j = 0; j < evts.length; j++) {
+                    var ev = evts[j];
+                    var t1 = ((ev.T1||[{}])[0].Nm||''), t2 = ((ev.T2||[{}])[0].Nm||'');
+                    var isTM = isTurkL || turkishTeams.some(function(t){return t1.toLowerCase().includes(t.toLowerCase())||t2.toLowerCase().includes(t.toLowerCase());});
+                    var isBigClub = bigClubs.some(function(t){return t1.toLowerCase().includes(t)||t2.toLowerCase().includes(t);});
+                    if (!isTM) continue;
+                    
+                    var mt = ev.Esd ? String(ev.Esd).substring(8,10)+':'+String(ev.Esd).substring(10,12) : '';
+                    var timeStr = 'YARIN';
+                    if (mt) { var h = parseInt(mt.substring(0,2))+6; if(h>=24)h-=24; timeStr = 'YARIN ' + String(h).padStart(2,'0') + ':' + mt.substring(3); }
+                    
+                    var obj = {
+                        team1: t1, team2: t2,
+                        score1: 0, score2: 0,
+                        league: (stg.Snm||'') + ((stg.Cnm) ? ' (' + stg.Cnm + ')' : ''),
+                        status: timeStr,
+                        isLive: false,
+                        isTomorrow: true
+                    };
+                    
+                    if (isBigClub) {
+                        var sc = 100;
+                        if (sc > bigPrio) { bigPrio = sc; bigMatch = obj; }
+                    }
+                    if (turkPrio === 0) { turkPrio = 1; turkMatch = obj; }
+                }
+            }
+            
+            tomorrowTurkishMatch = bigMatch || turkMatch;
+            tomorrowLastFetch = now;
+        } catch(e) {
+            console.log('Yarınki maç fetch hatası:', e);
+        }
+        tomorrowFetchInProgress = false;
+        return tomorrowTurkishMatch;
+    }
+
     async function fetchLiveScore() {
         try {
             var resp = await fetch((BACKEND_URL || '') + '/api/livescore/today');
@@ -480,8 +551,35 @@
                         return;
                     }
                     
-                    // 3. Önemli maç BİTTİ + canlı maç yok → sonucu göster (cache'lenecek)
+                    // 3. Önemli maç BİTTİ + canlı Türk maçı yok → yarınki en önemli Türk maçına geç
                     if (impFinished && !liveTurkMatch) {
+                        // Önce biten maçı 5-10 dk göster, sonra yarınki maça geç
+                        var ftStamp = parseInt(localStorage.getItem('bb_ft_stamp_' + importantMatch.team1 + importantMatch.team2) || '0');
+                        if (!ftStamp) {
+                            ftStamp = Date.now();
+                            try { localStorage.setItem('bb_ft_stamp_' + importantMatch.team1 + importantMatch.team2, String(ftStamp)); } catch(e) {}
+                        }
+                        var elapsed = Date.now() - ftStamp;
+                        // İlk 5 dakika: biten maç sonucu göster
+                        if (elapsed < 5 * 60 * 1000) {
+                            cacheScoreboard(importantMatch);
+                            updateScoreboard(importantMatch);
+                            return;
+                        }
+                        // 5 dk sonra: yarınki Türk maçına geç (veya bigLeagueMatch'e)
+                        var tmr = await fetchTomorrowTurkishMatch();
+                        if (tmr) {
+                            cacheScoreboard(tmr);
+                            updateScoreboard(tmr);
+                            return;
+                        }
+                        // Yarın maç yoksa bigLeague fallback
+                        if (bigLeagueMatch) {
+                            cacheScoreboard(bigLeagueMatch);
+                            updateScoreboard(bigLeagueMatch);
+                            return;
+                        }
+                        // Hiçbir alternatif yoksa biten maçı göster
                         cacheScoreboard(importantMatch);
                         updateScoreboard(importantMatch);
                         return;
@@ -589,12 +687,18 @@
     function updateNotifUI(enabled) {
         var btn = document.getElementById('notifToggle');
         if (!btn) return;
+        var statusEl = btn.querySelector('.notif-status');
+        btn.classList.remove('active');
+        btn.classList.remove('denied');
+        
         if (enabled) {
             btn.classList.add('active');
-            btn.querySelector('.notif-status').textContent = 'AÇIK';
+            if (statusEl) statusEl.textContent = 'AÇIK';
+        } else if ('Notification' in window && Notification.permission === 'denied') {
+            btn.classList.add('denied');
+            if (statusEl) statusEl.textContent = 'REDDEDİLDİ';
         } else {
-            btn.classList.remove('active');
-            btn.querySelector('.notif-status').textContent = 'KAPALI';
+            if (statusEl) statusEl.textContent = 'KAPALI';
         }
     }
 
@@ -625,6 +729,10 @@
         if (!notificationsEnabled) return;
         var t1 = match.team1 || '---';
         var t2 = match.team2 || '---';
+        
+        // SADECE Türk maçları için bildirim gönder (yabancı maç leak'i engelle)
+        if (!isTurkish(t1) && !isTurkish(t2)) return;
+        
         var s1 = match.score1 || 0;
         var s2 = match.score2 || 0;
         var key = t1 + '-' + t2 + '-' + status + '-' + s1 + '-' + s2;
@@ -675,13 +783,16 @@
     function sendNotification(title, body, type) {
         if (!('Notification' in window) || Notification.permission !== 'granted') return;
         
+        var icon = getNotifIcon(type);
+        var badge = getNotifIcon(type);
+        
         // Service Worker varsa onun üzerinden gönder (site kapalıyken de çalışır)
         if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
             navigator.serviceWorker.ready.then(function(reg) {
                 reg.showNotification(title, {
                     body: body,
-                    icon: 'tsl_logo.png',
-                    badge: 'tsl_logo.png',
+                    icon: icon,
+                    badge: badge,
                     tag: 'banban-' + type + '-' + Date.now(),
                     renotify: true,
                     requireInteraction: true
@@ -691,8 +802,8 @@
             try {
                 var n = new Notification(title, {
                     body: body,
-                    icon: 'tsl_logo.png',
-                    badge: 'tsl_logo.png',
+                    icon: icon,
+                    badge: badge,
                     tag: 'banban-' + type + '-' + Date.now(),
                     renotify: true,
                     requireInteraction: true
@@ -701,6 +812,22 @@
                 setTimeout(function() { n.close(); }, 10000);
             } catch(e) {}
         }
+    }
+    
+    // Tip bazlı bildirim ikonu - gol/kart/penaltı/düdük vs.
+    function getNotifIcon(type) {
+        var map = {
+            goal: 'icons/goal.png',
+            redcard: 'icons/redcard.png',
+            yellowcard: 'icons/yellowcard.png',
+            penalty: 'icons/penalty.png',
+            kickoff: 'icons/kickoff.png',
+            halftime: 'icons/halftime.png',
+            fulltime: 'icons/fulltime.png',
+            info: 'icons/info.png',
+            match: 'icons/info.png'
+        };
+        return map[type] || 'icons/info.png';
     }
     
     // Service Worker kayıt
