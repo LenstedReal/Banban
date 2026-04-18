@@ -32,6 +32,7 @@
         trtspor: 'https://tv-trtspor1.medya.trt.com.tr/master.m3u8',
         tv8: 'https://tv8.daioncdn.net/tv8/tv8.m3u8?app=7ddc255a-ef47-4e81-ab14-c0e5f2949788&ce=3',
         demo: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
+        demo3: 'demo3',
         akamai: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
         apple: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
         bein1_video: BEIN1_VIDEO,
@@ -58,7 +59,7 @@
     // ============================================
     var ADS = [
         { name: 'PUBG MOBILE', url: 'https://play.google.com/store/apps/details?id=com.tencent.ig', color: '#FF6600', vid: 'ad_pubg' },
-        { name: 'eFootball 2025', url: 'https://play.google.com/store/apps/details?id=jp.konami.pesam', color: '#0066FF', vid: 'ad_efootball' },
+        { name: 'eFootball 2026', url: 'https://play.google.com/store/apps/details?id=jp.konami.pesam', color: '#0066FF', vid: 'ad_efootball' },
         { name: 'Call of Duty Mobile', url: 'https://play.google.com/store/apps/details?id=com.activision.callofduty.shooter', color: '#00CC44', vid: 'ad_cod' },
         { name: 'Lords Mobile', url: 'https://play.google.com/store/apps/details?id=com.igg.android.lordsmobile', color: '#CC0000', vid: 'ad_lords' }
     ];
@@ -70,6 +71,7 @@
     const CHANNELS = {
         demo1: { name: 'DEMO 1', status: 'online', stream: STREAMS.test },
         demo2: { name: 'DEMO 2', status: 'online', stream: STREAMS.demo, subtitles: 'tears-of-steel-tr.vtt' },
+        demo3: { name: 'DEMO 3', status: 'online', isLocalVideo: true, videoFile: 'demo3' },
         reklam: { name: 'REKLAM', status: 'online', isAd: true },
         trt1: { name: 'TRT 1', status: 'online', stream: STREAMS.trt1 },
         trthaber: { name: 'TRT HABER', status: 'online', stream: STREAMS.trthaber },
@@ -520,6 +522,26 @@
             ov.textContent = 'REKLAM - ' + ad.name;
             ov.onclick = function() { window.open(ad.url, '_blank'); };
             document.querySelector('.video-wrapper').appendChild(ov);
+            return;
+        }
+
+        // DEMO 3 - Lokal video dosyası (loop)
+        if (channel.isLocalVideo) {
+            clearTimeout(loadTimeout);
+            loadingOverlay.classList.add('hidden');
+            if (hls) { hls.destroy(); hls = null; }
+            video.removeAttribute('src');
+            video.loop = true;
+            video.muted = isMuted;
+            video.style.filter = 'none';
+            video.src = channel.videoFile + '.webm';
+            video.onerror = function() { video.onerror = null; video.src = channel.videoFile + '.mp4'; };
+            video.load();
+            video.play().catch(function() {});
+            isPlaying = true;
+            unmuteBtn.classList.toggle('hidden', !isMuted);
+            updateQualityMenu([]);
+            hideAdOverlay();
             return;
         }
 
