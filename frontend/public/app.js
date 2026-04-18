@@ -118,6 +118,7 @@
     let httpPollingInterval = null;
     let qualityMenuOpen = false;
     let hasLiveScoreData = false; // LiveScore API'den gerçek veri geldi mi?
+    let liveScoreChecked = false; // LiveScore API ilk kez çağrıldı mı?
     let lastNotifiedStatus = ''; // Son bildirim gönderilen maç durumu
     let notificationsEnabled = false; // Bildirim izni var mı?
 
@@ -148,8 +149,8 @@
             try {
                 const data = JSON.parse(event.data);
                 if (data.type === 'score_update') {
-                    // LiveScore'dan gerçek veri varsa WebSocket'i tamamen engelle
-                    if (hasLiveScoreData) return;
+                    // LiveScore tamamlanmadan veya başarılıysa WebSocket'i engelle
+                    if (!liveScoreChecked || hasLiveScoreData) return;
                     updateScoreboard(data);
                 }
             } catch (e) {}
@@ -251,6 +252,7 @@
                 
                 if (importantMatch || liveTurkMatch || bigLeagueMatch) {
                     hasLiveScoreData = true;
+                    liveScoreChecked = true;
                     
                     // Önemli maç CANLI ise → her zaman göster
                     if (importantMatch && importantMatch.isLive) {
@@ -288,7 +290,8 @@
                 }
             }
         } catch(e){console.log('LiveScore API hatası:',e);}
-        try{if(BACKEND_URL){var r=await fetch(BACKEND_URL+'/api/scores/live');if(r.ok){updateScoreboard(await r.json());return;}}}catch(e){}
+        try{if(BACKEND_URL){var r=await fetch(BACKEND_URL+'/api/scores/live');if(r.ok){updateScoreboard(await r.json());liveScoreChecked=true;return;}}}catch(e){}
+        liveScoreChecked=true;
         showDefaultMatch();
     }
 
@@ -309,6 +312,11 @@
         document.getElementById('score2').textContent = isPreMatch ? '' : (match.score2 || 0);
         document.getElementById('scoreSep').style.display = isPreMatch ? 'none' : '';
         document.getElementById('leagueInfo').textContent = match.league || 'SÜPER LİG';
+        
+        // İlk veri geldiğinde scoreboard'u fade-in yap
+        document.getElementById('leagueInfo').style.opacity = '1';
+        document.getElementById('teamsContainer').style.opacity = '1';
+        matchMinute.style.opacity = '1';
         
         if (status === 'MAÇ SONU' || status === 'FT') {
             matchMinute.textContent = 'MAÇ SONU';
