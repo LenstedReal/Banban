@@ -53,6 +53,20 @@
         ]
     };
 
+    // ============================================
+    // REKLAM SİSTEMİ - 5 Farklı Video
+    // ============================================
+    var ADS = [
+        { name: 'PUBG MOBILE', url: 'https://play.google.com/store/apps/details?id=com.tencent.ig', color: '#FF6600', vid: 'ad_pubg' },
+        { name: 'eFootball 2025', url: 'https://play.google.com/store/apps/details?id=jp.konami.pesam', color: '#0066FF', vid: 'ad_efootball' },
+        { name: 'Call of Duty Mobile', url: 'https://play.google.com/store/apps/details?id=com.activision.callofduty.shooter', color: '#00CC44', vid: 'ad_cod' },
+        { name: 'Lords Mobile', url: 'https://play.google.com/store/apps/details?id=com.igg.android.lordsmobile', color: '#CC0000', vid: 'ad_lords' }
+    ];
+    function shuffleAds(){var a=ADS.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}sessionStorage.setItem('bb_ads',JSON.stringify(a));sessionStorage.setItem('bb_adi','0');return a;}
+    function getAds(){var s=sessionStorage.getItem('bb_ads');return s?JSON.parse(s):shuffleAds();}
+    function getAd(){var ads=getAds();var i=parseInt(sessionStorage.getItem('bb_adi')||'0');if(i>=ads.length)i=0;return ads[i];}
+    function nextAd(){var ads=getAds();var i=parseInt(sessionStorage.getItem('bb_adi')||'0')+1;if(i>=ads.length)i=0;sessionStorage.setItem('bb_adi',String(i));}
+
     const CHANNELS = {
         demo1: { name: 'DEMO 1', status: 'online', stream: STREAMS.test },
         demo2: { name: 'DEMO 2', status: 'online', stream: STREAMS.demo, subtitles: 'tears-of-steel-tr.vtt' },
@@ -167,83 +181,100 @@
         return 'CANLI';
     }
 
+    // Scoreboard döngü state'i
+    var scoreboardImportantMatch = null; // En önemli maç (GS, FB, BJK, TS)
+    var scoreboardLiveMatch = null;      // Canlı oynanan herhangi bir Türk maçı
+    var scoreboardShowingImportant = true;
+    var scoreboardCycleTimer = 0;
+    var CYCLE_IMPORTANT_DURATION = 900; // 15dk (saniye)
+    var CYCLE_LIVE_DURATION = 600;      // 10dk (saniye)
+    var bigClubs = ['galatasaray','fenerbah','besiktas','beşiktaş','trabzonspor'];
+
     async function fetchLiveScore() {
         try {
-            // LiveScore API - backend proxy veya Vercel serverless
-            const today = new Date();
-            const dateStr = today.getFullYear() + 
-                String(today.getMonth() + 1).padStart(2, '0') + 
-                String(today.getDate()).padStart(2, '0');
-            
-            const liveScoreUrl = (BACKEND_URL || '') + '/api/livescore/today';
-            const resp = await fetch(liveScoreUrl);
+            var resp = await fetch((BACKEND_URL || '') + '/api/livescore/today');
             if (resp.ok) {
-                const data = await resp.json();
-                const stages = data.Stages || [];
+                var data = await resp.json();
+                var stages = data.Stages || [];
+                var turkTeams = ['galatasaray','fenerbah','besiktas','beşiktaş','trabzonspor','kocaelispor','samsunspor','antalyaspor','alanyaspor','kayserispor','kasımpaşa','sivasspor','turkey','türkiye','istanbul','göztepe','eyüp','adana','karagümrük','karagumruk','gençlerbirliği','başakşehir','hatayspor','pendik','bodrum','sakaryaspor'];
+                var bigKeys = ['champions league','europa league','süper lig','super lig','1st lig','premier league','la liga','laliga','serie a','bundesliga','ligue 1'];
                 
-                // Türk takımları ara
-                const turkTeams = ['galatasaray', 'fenerbah', 'besiktas', 'beşiktaş', 'trabzonspor', 
-                    'kocaelispor', 'samsunspor', 'antalyaspor', 'alanyaspor', 'kayserispor',
-                    'kasımpaşa', 'sivasspor', 'turkey', 'türkiye', 'istanbul', 'göztepe', 'eyüp', 'adana'];
-                
-                let bestMatch = null;
-                let bestPriority = 0;
-                
-                for (const stage of stages) {
-                    const country = (stage.Cnm || '').toLowerCase();
-                    const leagueName = stage.Snm || '';
-                    const isTurkishLeague = country.includes('turk') || country.includes('türk');
-                    
-                    for (const evt of (stage.Events || [])) {
-                        const t1 = ((evt.T1 || [{}])[0].Nm || '').toLowerCase();
-                        const t2 = ((evt.T2 || [{}])[0].Nm || '').toLowerCase();
-                        const isTurkMatch = isTurkishLeague || turkTeams.some(t => t1.includes(t) || t2.includes(t));
+                var importantMatch = null; // Büyük Türk takım maçı (GS, FB, BJK, TS)
+                var importantPrio = 0;
+                var liveTurkMatch = null;  // Canlı oynanan herhangi bir Türk maçı
+                var liveTurkPrio = 0;
+                var bigLeagueMatch = null; // Büyük lig maçı (fallback)
+                var bigLeaguePrio = 0;
+
+                for (var i = 0; i < stages.length; i++) {
+                    var stg = stages[i], cn = stg.Cnm||'', sn = stg.Snm||'', cl = cn.toLowerCase(), sl = sn.toLowerCase();
+                    var isTurkL = cl.includes('turk') || cl.includes('türk');
+                    var isBigL = bigKeys.some(function(k){return (sl+' '+cl).includes(k);});
+                    if ((sl+' '+cl).includes('caf') || cl.includes('asia') || (sl+' '+cl).includes('concacaf')) isBigL = false;
+                    var evts = stg.Events||[];
+                    for (var j = 0; j < evts.length; j++) {
+                        var ev = evts[j];
+                        var t1 = ((ev.T1||[{}])[0].Nm||''), t2 = ((ev.T2||[{}])[0].Nm||'');
+                        var isTM = isTurkL || turkTeams.some(function(t){return t1.toLowerCase().includes(t)||t2.toLowerCase().includes(t);});
+                        var isBigClub = bigClubs.some(function(t){return t1.toLowerCase().includes(t)||t2.toLowerCase().includes(t);});
+                        var eps = ev.Eps||'NS', p = 0, st = 'BAŞLAMADI';
+                        var isLive = false;
+                        if (eps.includes("'")||eps==='1H'||eps==='2H') {p=3;st=eps;isLive=true;} else if (eps==='HT') {p=3;st='DEVRE ARASI';isLive=true;} else if (eps==='FT') {p=1;st='MAÇ SONU';} else if (eps==='NS') {p=2;var mt=ev.Esd?String(ev.Esd).substring(8,10)+':'+String(ev.Esd).substring(10,12):'';if(mt){var h=parseInt(mt.substring(0,2))+6;if(h>=24)h-=24;st='MAÇ ÖNÜ - '+String(h).padStart(2,'0')+':'+mt.substring(3);}} else {p=2;st=eps;}
+                        var sc = p*100 + (ev.Tr1||0) + (ev.Tr2||0);
+                        var obj = {team1:t1||'---',team2:t2||'---',score1:ev.Tr1||0,score2:ev.Tr2||0,league:sn+(cn?' ('+cn+')':''),status:st,isLive:isLive};
                         
-                        if (!isTurkMatch) continue;
-                        
-                        const eps = evt.Eps || 'NS';
-                        let priority = 0;
-                        let status = 'BAŞLAMADI';
-                        
-                        if (eps.includes("'") || eps === '1H' || eps === '2H') { priority = 3; status = eps; }
-                        else if (eps === 'HT') { priority = 3; status = 'DEVRE ARASI'; }
-                        else if (eps === 'FT') { priority = 1; status = 'MAÇ SONU'; }
-                        else if (eps === 'NS') { priority = 2; 
-                            const matchTime = evt.Esd ? String(evt.Esd).substring(8, 10) + ':' + String(evt.Esd).substring(10, 12) : '';
-                            if (matchTime) {
-                                let h = parseInt(matchTime.substring(0, 2)) + 6;
-                                if (h >= 24) h -= 24;
-                                status = 'MAÇ ÖNÜ - ' + String(h).padStart(2, '0') + ':' + matchTime.substring(3);
-                            }
-                        }
-                        else { priority = 2; status = eps; }
-                        
-                        if (priority > bestPriority) {
-                            bestPriority = priority;
-                            bestMatch = {
-                                team1: (evt.T1 || [{}])[0].Nm || '---',
-                                team2: (evt.T2 || [{}])[0].Nm || '---',
-                                score1: evt.Tr1 || 0, score2: evt.Tr2 || 0,
-                                league: leagueName, status: status
-                            };
-                        }
+                        // Büyük Türk takım maçı (GS, FB, BJK, TS) - EN ÖNEMLİ
+                        if (isBigClub && sc > importantPrio) { importantPrio=sc; importantMatch=obj; }
+                        // Canlı oynanan Türk maçı (herhangi)
+                        if (isTM && isLive && sc > liveTurkPrio) { liveTurkPrio=sc; liveTurkMatch=obj; }
+                        // Büyük lig maçı fallback
+                        if (isBigL && sc > bigLeaguePrio) { bigLeaguePrio=sc; bigLeagueMatch=obj; }
                     }
                 }
                 
-                if (bestMatch) { hasLiveScoreData = true; updateScoreboard(bestMatch); return; }
+                scoreboardImportantMatch = importantMatch;
+                scoreboardLiveMatch = liveTurkMatch;
+                
+                if (importantMatch || liveTurkMatch || bigLeagueMatch) {
+                    hasLiveScoreData = true;
+                    
+                    // Önemli maç CANLI ise → her zaman göster
+                    if (importantMatch && importantMatch.isLive) {
+                        updateScoreboard(importantMatch);
+                        return;
+                    }
+                    
+                    // Önemli maç BAŞLAMADI + canlı başka Türk maçı var → döngü
+                    if (importantMatch && liveTurkMatch && !importantMatch.isLive) {
+                        scoreboardCycleTimer++;
+                        if (scoreboardShowingImportant) {
+                            // 15dk önemli maç göster, sonra canlı maça geç
+                            if (scoreboardCycleTimer > CYCLE_IMPORTANT_DURATION / 60) {
+                                scoreboardShowingImportant = false;
+                                scoreboardCycleTimer = 0;
+                            }
+                            updateScoreboard(importantMatch);
+                        } else {
+                            // 10dk canlı maç göster, sonra önemli maça dön
+                            if (scoreboardCycleTimer > CYCLE_LIVE_DURATION / 60) {
+                                scoreboardShowingImportant = true;
+                                scoreboardCycleTimer = 0;
+                            }
+                            updateScoreboard(liveTurkMatch);
+                        }
+                        return;
+                    }
+                    
+                    // Sadece önemli maç var
+                    if (importantMatch) { updateScoreboard(importantMatch); return; }
+                    // Sadece canlı Türk maçı var
+                    if (liveTurkMatch) { updateScoreboard(liveTurkMatch); return; }
+                    // Büyük lig fallback
+                    if (bigLeagueMatch) { updateScoreboard(bigLeagueMatch); return; }
+                }
             }
-        } catch (e) {
-            console.log('LiveScore API hatası:', e);
-        }
-        
-        // Fallback - backend
-        try {
-            if (BACKEND_URL) {
-                const resp = await fetch(BACKEND_URL + '/api/scores/live');
-                if (resp.ok) { updateScoreboard(await resp.json()); return; }
-            }
-        } catch (e) {}
-        
+        } catch(e){console.log('LiveScore API hatası:',e);}
+        try{if(BACKEND_URL){var r=await fetch(BACKEND_URL+'/api/scores/live');if(r.ok){updateScoreboard(await r.json());return;}}}catch(e){}
         showDefaultMatch();
     }
 
@@ -423,6 +454,8 @@
                     return;
                 }
                 hideAdOverlay();
+                // REKLAM kanalına her tıklamada sıradaki reklama geç
+                if (ch && ch.isAd) nextAd();
                 setupStream();
             });
         });
@@ -454,7 +487,7 @@
             }
         }, 15000);
 
-        // REKLAM channel = Lokal video (20sn, bittikten sonra Play Store'a yönlendir)
+        // REKLAM - her seferinde farklı oyunun videosu oynar
         if (channel.isAd) {
             clearTimeout(loadTimeout);
             loadingOverlay.classList.add('hidden');
@@ -462,24 +495,31 @@
             video.removeAttribute('src');
             video.loop = false;
             video.muted = isMuted;
-            // WebM for wider codec support, MP4 as fallback
-            var cacheBust = '?v=' + Date.now();
-            video.src = 'reklam.webm' + cacheBust;
+            video.style.filter = 'none';
+            var ad = getAd();
+            // Önce webm, sonra mp4, son çare orijinal PUBG
+            video.src = ad.vid + '.webm';
             video.onerror = function() {
-                if (video.src.includes('.webm')) {
-                    video.src = 'reklam.mp4' + cacheBust;
-                }
+                video.onerror = function() {
+                    video.onerror = function() { video.onerror = null; video.src = 'reklam.mp4'; };
+                    video.src = 'reklam.webm';
+                };
+                video.src = ad.vid + '.mp4';
             };
-            // Reklam bitince Play Store PUBG Mobile'a yönlendir
-            video.onended = function() {
-                window.open('https://play.google.com/store/apps/details?id=com.tencent.ig', '_blank');
-            };
+            video.onended = function() { window.open(ad.url, '_blank'); nextAd(); };
             video.load();
-            video.play().catch(() => {});
+            video.play().catch(function() {});
             isPlaying = true;
             unmuteBtn.classList.toggle('hidden', !isMuted);
             updateQualityMenu([]);
-            showAdOverlay();
+            // Overlay
+            hideAdOverlay();
+            var ov = document.createElement('div'); ov.id = 'adOverlay';
+            ov.setAttribute('data-testid', 'ad-overlay');
+            ov.style.cssText = 'position:absolute;top:15px;left:15px;z-index:30;padding:8px 16px;background:linear-gradient(135deg,'+ad.color+'ee,rgba(170,0,255,0.9));font-family:Orbitron,sans-serif;font-size:12px;font-weight:700;color:#fff;letter-spacing:2px;border:1px solid rgba(255,255,255,0.4);box-shadow:0 0 20px '+ad.color+'80;cursor:pointer;';
+            ov.textContent = 'REKLAM - ' + ad.name;
+            ov.onclick = function() { window.open(ad.url, '_blank'); };
+            document.querySelector('.video-wrapper').appendChild(ov);
             return;
         }
 
@@ -516,7 +556,7 @@
                 updateConnectionIcon();
                 updateQualityMenu(hls.levels || []);
                 // Reklam kanalıysa overlay göster
-                if (CHANNELS[currentChannel] && CHANNELS[currentChannel].isAd) showAdOverlay();
+                if (CHANNELS[currentChannel] && CHANNELS[currentChannel].isAd) { hideAdOverlay(); }
             });
 
             hls.on(Hls.Events.ERROR, (e, data) => {
@@ -636,15 +676,7 @@
         hideAdOverlay();
     }
 
-    function showAdOverlay() {
-        hideAdOverlay();
-        const overlay = document.createElement('div');
-        overlay.id = 'adOverlay';
-        overlay.setAttribute('data-testid', 'ad-overlay');
-        overlay.style.cssText = 'position:absolute;top:15px;left:15px;z-index:30;padding:8px 16px;background:linear-gradient(135deg,rgba(255,0,64,0.95),rgba(170,0,255,0.9));font-family:Orbitron,sans-serif;font-size:12px;font-weight:700;color:#fff;letter-spacing:2px;border:1px solid rgba(255,255,255,0.4);box-shadow:0 0 20px rgba(255,0,64,0.5);';
-        overlay.textContent = 'REKLAM - PUBG MOBILE';
-        document.querySelector('.video-wrapper').appendChild(overlay);
-    }
+    function showAdOverlay() { /* inline olarak taşındı */ }
 
     function hideAdOverlay() {
         const el = document.getElementById('adOverlay');
@@ -1026,19 +1058,30 @@
                     // Ülke ve lig eşleştirme
                     const countryLower = country.toLowerCase();
                     const leagueNameLower = leagueName.toLowerCase();
+                    const combined = (leagueNameLower + ' ' + countryLower);
                     
-                    if ((countryLower.includes('turk') || countryLower.includes('türk')) && leagueNameLower.includes('süper')) {
+                    if ((countryLower.includes('turk') || countryLower.includes('türk')) && (leagueNameLower.includes('süper') || leagueNameLower.includes('super lig'))) {
                         matchedLeague = leagueName; matchedLeagueId = '4339';
-                    } else if (leagueNameLower.includes('champions league') && countryLower === 'world') {
-                        matchedLeague = leagueName; matchedLeagueId = '4480';
-                    } else if (leagueNameLower === 'serie a' && countryLower.includes('ital')) {
+                    } else if ((countryLower.includes('turk') || countryLower.includes('türk')) && (leagueNameLower.includes('1st lig') || leagueNameLower.includes('1. lig'))) {
+                        matchedLeague = leagueName + ' (' + country + ')'; matchedLeagueId = 'tr1lig';
+                    } else if ((countryLower.includes('turk') || countryLower.includes('türk')) && (leagueNameLower.includes('2nd lig') || leagueNameLower.includes('2. lig'))) {
+                        matchedLeague = leagueName + ' (' + country + ')'; matchedLeagueId = 'tr2lig';
+                    } else if (combined.includes('champions league') && !combined.includes('afc') && !combined.includes('caf') && !combined.includes('asia') && !combined.includes('concacaf')) {
+                        matchedLeague = leagueName + ' (' + country + ')'; matchedLeagueId = '4480';
+                    } else if (combined.includes('europa league') && !combined.includes('asia')) {
+                        matchedLeague = leagueName + ' (' + country + ')'; matchedLeagueId = '4480';
+                    } else if (leagueNameLower.includes('serie a') && countryLower.includes('ital')) {
                         matchedLeague = leagueName; matchedLeagueId = '4332';
-                    } else if (leagueNameLower === 'bundesliga' && countryLower.includes('german')) {
+                    } else if (leagueNameLower.includes('bundesliga') && countryLower.includes('german')) {
                         matchedLeague = leagueName; matchedLeagueId = '4331';
                     } else if (leagueNameLower.includes('laliga') && countryLower.includes('spain')) {
                         matchedLeague = leagueName; matchedLeagueId = '4335';
+                    } else if (leagueNameLower.includes('copa del rey') && countryLower.includes('spain')) {
+                        matchedLeague = leagueName; matchedLeagueId = '4335';
                     } else if (leagueNameLower === 'premier league' && countryLower.includes('england')) {
                         matchedLeague = leagueName; matchedLeagueId = '4328';
+                    } else if (leagueNameLower.includes('ligue 1') && countryLower.includes('france')) {
+                        matchedLeague = leagueName; matchedLeagueId = 'ligue1';
                     }
                     
                     if (!matchedLeague) continue; // Sadece büyük ligler

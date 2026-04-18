@@ -181,6 +181,15 @@
         return 'CANLI';
     }
 
+    // Scoreboard döngü state'i
+    var scoreboardImportantMatch = null; // En önemli maç (GS, FB, BJK, TS)
+    var scoreboardLiveMatch = null;      // Canlı oynanan herhangi bir Türk maçı
+    var scoreboardShowingImportant = true;
+    var scoreboardCycleTimer = 0;
+    var CYCLE_IMPORTANT_DURATION = 900; // 15dk (saniye)
+    var CYCLE_LIVE_DURATION = 600;      // 10dk (saniye)
+    var bigClubs = ['galatasaray','fenerbah','besiktas','beşiktaş','trabzonspor'];
+
     async function fetchLiveScore() {
         try {
             var resp = await fetch((BACKEND_URL || '') + '/api/livescore/today');
@@ -189,27 +198,80 @@
                 var stages = data.Stages || [];
                 var turkTeams = ['galatasaray','fenerbah','besiktas','beşiktaş','trabzonspor','kocaelispor','samsunspor','antalyaspor','alanyaspor','kayserispor','kasımpaşa','sivasspor','turkey','türkiye','istanbul','göztepe','eyüp','adana','karagümrük','karagumruk','gençlerbirliği','başakşehir','hatayspor','pendik','bodrum','sakaryaspor'];
                 var bigKeys = ['champions league','europa league','süper lig','super lig','1st lig','premier league','la liga','laliga','serie a','bundesliga','ligue 1'];
-                var bestT = null, bestTP = 0, bestB = null, bestBP = 0;
+                
+                var importantMatch = null; // Büyük Türk takım maçı (GS, FB, BJK, TS)
+                var importantPrio = 0;
+                var liveTurkMatch = null;  // Canlı oynanan herhangi bir Türk maçı
+                var liveTurkPrio = 0;
+                var bigLeagueMatch = null; // Büyük lig maçı (fallback)
+                var bigLeaguePrio = 0;
+
                 for (var i = 0; i < stages.length; i++) {
                     var stg = stages[i], cn = stg.Cnm||'', sn = stg.Snm||'', cl = cn.toLowerCase(), sl = sn.toLowerCase();
                     var isTurkL = cl.includes('turk') || cl.includes('türk');
                     var isBigL = bigKeys.some(function(k){return (sl+' '+cl).includes(k);});
-                    // CAF, Asia, CONCACAF champions league'i hariç tut
                     if ((sl+' '+cl).includes('caf') || cl.includes('asia') || (sl+' '+cl).includes('concacaf')) isBigL = false;
                     var evts = stg.Events||[];
                     for (var j = 0; j < evts.length; j++) {
                         var ev = evts[j];
                         var t1 = ((ev.T1||[{}])[0].Nm||''), t2 = ((ev.T2||[{}])[0].Nm||'');
                         var isTM = isTurkL || turkTeams.some(function(t){return t1.toLowerCase().includes(t)||t2.toLowerCase().includes(t);});
+                        var isBigClub = bigClubs.some(function(t){return t1.toLowerCase().includes(t)||t2.toLowerCase().includes(t);});
                         var eps = ev.Eps||'NS', p = 0, st = 'BAŞLAMADI';
-                        if (eps.includes("'")||eps==='1H'||eps==='2H') {p=3;st=eps;} else if (eps==='HT') {p=3;st='DEVRE ARASI';} else if (eps==='FT') {p=1;st='MAÇ SONU';} else if (eps==='NS') {p=2;var mt=ev.Esd?String(ev.Esd).substring(8,10)+':'+String(ev.Esd).substring(10,12):'';if(mt){var h=parseInt(mt.substring(0,2))+6;if(h>=24)h-=24;st='MAÇ ÖNÜ - '+String(h).padStart(2,'0')+':'+mt.substring(3);}} else {p=2;st=eps;}
+                        var isLive = false;
+                        if (eps.includes("'")||eps==='1H'||eps==='2H') {p=3;st=eps;isLive=true;} else if (eps==='HT') {p=3;st='DEVRE ARASI';isLive=true;} else if (eps==='FT') {p=1;st='MAÇ SONU';} else if (eps==='NS') {p=2;var mt=ev.Esd?String(ev.Esd).substring(8,10)+':'+String(ev.Esd).substring(10,12):'';if(mt){var h=parseInt(mt.substring(0,2))+6;if(h>=24)h-=24;st='MAÇ ÖNÜ - '+String(h).padStart(2,'0')+':'+mt.substring(3);}} else {p=2;st=eps;}
                         var sc = p*100 + (ev.Tr1||0) + (ev.Tr2||0);
-                        var obj = {team1:t1||'---',team2:t2||'---',score1:ev.Tr1||0,score2:ev.Tr2||0,league:sn+(cn?' ('+cn+')':''),status:st};
-                        if (isTM && sc > bestTP) {bestTP=sc;bestT=obj;} else if (isBigL && sc > bestBP) {bestBP=sc;bestB=obj;}
+                        var obj = {team1:t1||'---',team2:t2||'---',score1:ev.Tr1||0,score2:ev.Tr2||0,league:sn+(cn?' ('+cn+')':''),status:st,isLive:isLive};
+                        
+                        // Büyük Türk takım maçı (GS, FB, BJK, TS) - EN ÖNEMLİ
+                        if (isBigClub && sc > importantPrio) { importantPrio=sc; importantMatch=obj; }
+                        // Canlı oynanan Türk maçı (herhangi)
+                        if (isTM && isLive && sc > liveTurkPrio) { liveTurkPrio=sc; liveTurkMatch=obj; }
+                        // Büyük lig maçı fallback
+                        if (isBigL && sc > bigLeaguePrio) { bigLeaguePrio=sc; bigLeagueMatch=obj; }
                     }
                 }
-                if (bestT) {hasLiveScoreData=true;updateScoreboard(bestT);return;}
-                if (bestB) {hasLiveScoreData=true;updateScoreboard(bestB);return;}
+                
+                scoreboardImportantMatch = importantMatch;
+                scoreboardLiveMatch = liveTurkMatch;
+                
+                if (importantMatch || liveTurkMatch || bigLeagueMatch) {
+                    hasLiveScoreData = true;
+                    
+                    // Önemli maç CANLI ise → her zaman göster
+                    if (importantMatch && importantMatch.isLive) {
+                        updateScoreboard(importantMatch);
+                        return;
+                    }
+                    
+                    // Önemli maç BAŞLAMADI + canlı başka Türk maçı var → döngü
+                    if (importantMatch && liveTurkMatch && !importantMatch.isLive) {
+                        scoreboardCycleTimer++;
+                        if (scoreboardShowingImportant) {
+                            // 15dk önemli maç göster, sonra canlı maça geç
+                            if (scoreboardCycleTimer > CYCLE_IMPORTANT_DURATION / 60) {
+                                scoreboardShowingImportant = false;
+                                scoreboardCycleTimer = 0;
+                            }
+                            updateScoreboard(importantMatch);
+                        } else {
+                            // 10dk canlı maç göster, sonra önemli maça dön
+                            if (scoreboardCycleTimer > CYCLE_LIVE_DURATION / 60) {
+                                scoreboardShowingImportant = true;
+                                scoreboardCycleTimer = 0;
+                            }
+                            updateScoreboard(liveTurkMatch);
+                        }
+                        return;
+                    }
+                    
+                    // Sadece önemli maç var
+                    if (importantMatch) { updateScoreboard(importantMatch); return; }
+                    // Sadece canlı Türk maçı var
+                    if (liveTurkMatch) { updateScoreboard(liveTurkMatch); return; }
+                    // Büyük lig fallback
+                    if (bigLeagueMatch) { updateScoreboard(bigLeagueMatch); return; }
+                }
             }
         } catch(e){console.log('LiveScore API hatası:',e);}
         try{if(BACKEND_URL){var r=await fetch(BACKEND_URL+'/api/scores/live');if(r.ok){updateScoreboard(await r.json());return;}}}catch(e){}
