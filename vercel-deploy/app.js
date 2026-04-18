@@ -220,11 +220,21 @@
     
     function checkMatchEvents(stages) {
         if (!notificationsEnabled) return;
+        var importantLeagues = ['süper lig','super lig','1. lig','champions league','europa league','premier league','la liga','laliga','serie a','bundesliga','ligue 1','conference league'];
+        var turkTeams = ['galatasaray','fenerbah','besiktas','beşiktaş','trabzonspor','kocaelispor','samsunspor','antalyaspor','alanyaspor','kayserispor','kasımpaşa','sivasspor','istanbul','göztepe','eyüp','adana','karagümrük','gençlerbirliği','başakşehir','hatayspor'];
+        
         for (var i = 0; i < stages.length; i++) {
-            var stg = stages[i], evts = stg.Events || [];
+            var stg = stages[i], cn = (stg.Cnm||'').toLowerCase(), sn = (stg.Snm||'').toLowerCase();
+            var isImportant = importantLeagues.some(function(l){ return (sn+' '+cn).includes(l); });
+            var evts = stg.Events || [];
             for (var j = 0; j < evts.length; j++) {
                 var ev = evts[j];
                 var t1 = ((ev.T1||[{}])[0].Nm||''), t2 = ((ev.T2||[{}])[0].Nm||'');
+                var isTurk = turkTeams.some(function(t){ return t1.toLowerCase().includes(t)||t2.toLowerCase().includes(t); });
+                
+                // Sadece önemli lig veya Türk takım maçları
+                if (!isImportant && !isTurk) continue;
+                
                 var key = t1 + '-' + t2;
                 var eps = ev.Eps || 'NS';
                 var isLive = eps.includes("'") || eps === '1H' || eps === '2H' || eps === 'HT';
@@ -238,18 +248,15 @@
                 var totalReds = yr1 + yr2;
                 
                 if (!prev) {
-                    // İlk kez görülen maç - sadece kaydet, bildirim atma
                     lastMatchEvents[key] = { goals: totalGoals, reds: totalReds };
                     continue;
                 }
                 
-                // GOL bildirimi
                 if (totalGoals > prev.goals) {
                     var goalTeam = (s1 > (prev.goals - (ev.Tr2||0))) ? t1 : t2;
                     sendMatchAlert('GOL!', goalTeam + '! ' + t1 + ' ' + s1 + ' - ' + s2 + ' ' + t2 + ' (' + eps + ')', 'goal');
                 }
                 
-                // KIRMIZI KART bildirimi
                 if (totalReds > prev.reds) {
                     sendMatchAlert('KIRMIZI KART!', t1 + ' ' + s1 + ' - ' + s2 + ' ' + t2 + ' (' + eps + ')', 'redcard');
                 }
