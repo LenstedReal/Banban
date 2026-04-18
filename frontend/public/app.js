@@ -135,9 +135,8 @@
             try {
                 const data = JSON.parse(event.data);
                 if (data.type === 'score_update') {
-                    // LiveScore'dan gerçek veri varsa, WebSocket'ten gelen default veriyi atla
-                    const isDefault = (data.team1 === 'TÜRKİYE' && data.team2 === 'ROMANYA');
-                    if (isDefault && hasLiveScoreData) return;
+                    // LiveScore'dan gerçek veri varsa WebSocket'i tamamen engelle
+                    if (hasLiveScoreData) return;
                     updateScoreboard(data);
                 }
             } catch (e) {}
@@ -305,9 +304,9 @@
             statusBadge.className = 'live-badge ended';
         } else if (isPreMatch) {
             matchMinute.textContent = status === 'BAŞLAMADI' ? 'MAÇ ÖNÜ' : status;
-            matchMinute.className = 'match-minute maintenance';
-            statusText.textContent = 'YAKINDA';
-            statusBadge.className = 'live-badge maintenance';
+            matchMinute.className = 'match-minute';
+            statusText.textContent = 'MAÇ ÖNÜ';
+            statusBadge.className = 'live-badge';
         } else {
             matchMinute.textContent = status;
             matchMinute.className = 'match-minute';
