@@ -704,6 +704,7 @@
                 loadingOverlay.classList.add('hidden');
                 statusText.textContent = 'CANLI';
                 statusBadge.className = 'live-badge';
+                video.muted = isMuted; // Ses durumunu zorla
                 video.play().catch(() => {});
                 isPlaying = true;
                 retryCount = 0;
@@ -782,27 +783,25 @@
     function updateServerUI() {
         var servers = SERVER_ALTERNATIVES[currentChannel] || [];
         var ch = CHANNELS[currentChannel];
-        var isLocal = ch && (ch.isAd || ch.isLocalVideo || ch.status === 'maintenance');
+        var isLocal = ch && (ch.isAd || ch.isLocalVideo);
         
         document.querySelectorAll('.server-item').forEach(function(item, i) {
             item.classList.toggle('active', i === currentServerIndex);
             var status = item.querySelector('.server-status');
             if (status) {
                 if (isLocal) {
-                    // Reklam/Demo3/Bakım kanallarında sunucu seçimi gereksiz
                     status.className = 'server-status';
-                    item.style.opacity = '0.3';
-                    item.style.pointerEvents = 'none';
+                    item.style.opacity = '0.5';
                 } else if (i < servers.length) {
                     status.className = i === currentServerIndex ? 'server-status online' : 'server-status checking';
                     item.style.opacity = '1';
-                    item.style.pointerEvents = 'auto';
                 } else {
                     status.className = 'server-status';
-                    item.style.opacity = '0.3';
-                    item.style.pointerEvents = 'none';
+                    item.style.opacity = '0.5';
                 }
             }
+            // Hepsi tıklanabilir
+            item.style.pointerEvents = 'auto';
         });
     }
 
@@ -887,7 +886,10 @@
         if (!video) return;
         isMuted = !isMuted;
         video.muted = isMuted;
-        if (!isMuted) video.volume = 0.7;
+        if (!isMuted) {
+            video.volume = 0.7;
+            video.play().catch(function() {});
+        }
         unmuteBtn.classList.toggle('hidden', !isMuted);
         document.getElementById('volumeSlider').value = isMuted ? 0 : Math.round(video.volume * 100);
         const icon = document.getElementById('muteIcon');
