@@ -231,39 +231,30 @@
                 if (!isLive) continue;
                 
                 var s1 = ev.Tr1 || 0, s2 = ev.Tr2 || 0;
-                var yr1 = ev.Tr1OR || 0, yr2 = ev.Tr2OR || 0; // Kırmızı kart
-                var inc = ev.Incidents || [];
+                var yr1 = ev.Tr1OR || 0, yr2 = ev.Tr2OR || 0;
                 
-                var prev = lastMatchEvents[key] || { goals: 0, reds: 0, score: '0-0' };
+                var prev = lastMatchEvents[key];
                 var totalGoals = s1 + s2;
                 var totalReds = yr1 + yr2;
-                var prevGoals = prev.goals;
-                var prevReds = prev.reds;
+                
+                if (!prev) {
+                    // İlk kez görülen maç - sadece kaydet, bildirim atma
+                    lastMatchEvents[key] = { goals: totalGoals, reds: totalReds };
+                    continue;
+                }
                 
                 // GOL bildirimi
-                if (totalGoals > prevGoals && prevGoals > 0) {
-                    var goalTeam = (s1 > parseInt(prev.score.split('-')[0])) ? t1 : t2;
+                if (totalGoals > prev.goals) {
+                    var goalTeam = (s1 > (prev.goals - (ev.Tr2||0))) ? t1 : t2;
                     sendMatchAlert('GOL!', goalTeam + '! ' + t1 + ' ' + s1 + ' - ' + s2 + ' ' + t2 + ' (' + eps + ')', 'goal');
                 }
                 
                 // KIRMIZI KART bildirimi
-                if (totalReds > prevReds) {
-                    sendMatchAlert('KIRMIZI KART!', t1 + ' ' + s1 + ' - ' + s2 + ' ' + t2, 'redcard');
+                if (totalReds > prev.reds) {
+                    sendMatchAlert('KIRMIZI KART!', t1 + ' ' + s1 + ' - ' + s2 + ' ' + t2 + ' (' + eps + ')', 'redcard');
                 }
                 
-                // Penaltı kontrolü (Incidents'tan)
-                for (var k = 0; k < inc.length; k++) {
-                    var incident = inc[k];
-                    if (incident && incident.IT === 36) { // Penalty
-                        var penKey = key + '-pen-' + k;
-                        if (!lastMatchEvents[penKey]) {
-                            lastMatchEvents[penKey] = true;
-                            sendMatchAlert('PENALTI!', t1 + ' vs ' + t2 + ' - Penaltı kararı!', 'penalty');
-                        }
-                    }
-                }
-                
-                lastMatchEvents[key] = { goals: totalGoals, reds: totalReds, score: s1 + '-' + s2 };
+                lastMatchEvents[key] = { goals: totalGoals, reds: totalReds };
             }
         }
     }
@@ -623,19 +614,38 @@
 
     function sendNotification(title, body, type) {
         if (!('Notification' in window) || Notification.permission !== 'granted') return;
-        try {
-            var n = new Notification(title, {
-                body: body,
-                icon: 'tsl_logo.png',
-                badge: 'tsl_logo.png',
-                tag: 'banban-' + type + '-' + Date.now(),
-                renotify: true,
-                silent: false,
-                requireInteraction: true
+        
+        // Service Worker varsa onun üzerinden gönder (site kapalıyken de çalışır)
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.ready.then(function(reg) {
+                reg.showNotification(title, {
+                    body: body,
+                    icon: 'tsl_logo.png',
+                    badge: 'tsl_logo.png',
+                    tag: 'banban-' + type + '-' + Date.now(),
+                    renotify: true,
+                    requireInteraction: true
+                });
             });
-            n.onclick = function() { window.open('https://banbansports978.vercel.app', '_blank'); n.close(); };
-            setTimeout(function() { n.close(); }, 10000);
-        } catch(e) {}
+        } else {
+            try {
+                var n = new Notification(title, {
+                    body: body,
+                    icon: 'tsl_logo.png',
+                    badge: 'tsl_logo.png',
+                    tag: 'banban-' + type + '-' + Date.now(),
+                    renotify: true,
+                    requireInteraction: true
+                });
+                n.onclick = function() { window.open('https://banbansports978.vercel.app', '_blank'); n.close(); };
+                setTimeout(function() { n.close(); }, 10000);
+            } catch(e) {}
+        }
+    }
+    
+    // Service Worker kayıt
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').catch(function() {});
     }
 
     window.toggleNotifications = toggleNotifications;
@@ -1169,8 +1179,24 @@
     // ============================================
     // CRASH / FREEZE DETECTION (SMART)
     // ============================================
-    const STALL_THRESHOLD = 15;  // 15 saniye = kısa donma göstergesi
-    const CRASH_THRESHOLD = 45; // 45 saniye = uzun crash -> sunucu geçişi
+    const STALL_THRESHOLD = 15;
+    const CRASH_THRESHOLD = 45;
+
+    // Video event listeners - TEK SEFERLIK (startCrashDetection dışında)
+    video.addEventListener('waiting', function() {
+        if (hls && isPlaying) { try { hls.startLoad(); } catch(e) {} }
+    });
+    video.addEventListener('stalled', function() {
+        if (hls && isPlaying) {
+            try { hls.startLoad(); } catch(e) {}
+            setTimeout(function() { video.play().catch(function(){}); }, 1000);
+        }
+    });
+    video.addEventListener('error', function() {
+        if (video.error && (video.error.code === 2 || video.error.code === 4)) {
+            tryNextServer();
+        }
+    });
 
     function startCrashDetection() {
         if (crashCheckInterval) clearInterval(crashCheckInterval);
@@ -1184,15 +1210,16 @@
             if (Math.abs(ct - lastPlaybackTime) < 0.1) {
                 stallCount++;
                 
+                // 8sn donma → HLS recovery dene
+                if (stallCount === 8 && hls) {
+                    try { hls.startLoad(); video.play().catch(function(){}); } catch(e) {}
+                }
+                
                 if (stallCount >= CRASH_THRESHOLD) {
-                    // 15+ saniye donma -> önce sunucu geçişi dene, son çare bakım
-                    console.log('15sn+ donma algılandı - sunucu geçişi deneniyor');
                     clearInterval(crashCheckInterval);
                     hideFreezeOverlay();
                     tryNextServer();
                 } else if (stallCount >= STALL_THRESHOLD) {
-                    // 5 saniye donma -> yenileme ikonu göster
-                    console.log('5sn donma algılandı - yenile butonu gösteriliyor');
                     showFreezeOverlay();
                 }
             } else {
