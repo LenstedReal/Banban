@@ -220,48 +220,84 @@
     
     function checkMatchEvents(stages) {
         if (!notificationsEnabled) return;
-        var importantLeagues = ['süper lig','super lig','1. lig','champions league','europa league','premier league','la liga','laliga','serie a','bundesliga','ligue 1','conference league'];
         var turkTeams = ['galatasaray','fenerbah','besiktas','beşiktaş','trabzonspor','kocaelispor','samsunspor','antalyaspor','alanyaspor','kayserispor','kasımpaşa','sivasspor','istanbul','göztepe','eyüp','adana','karagümrük','gençlerbirliği','başakşehir','hatayspor'];
         
         for (var i = 0; i < stages.length; i++) {
             var stg = stages[i], cn = (stg.Cnm||'').toLowerCase(), sn = (stg.Snm||'').toLowerCase();
-            var isImportant = importantLeagues.some(function(l){ return (sn+' '+cn).includes(l); });
+            var isTurkLeague = cn.includes('turk') || cn.includes('türk') || sn.includes('süper lig') || sn.includes('super lig') || sn.includes('1. lig');
             var evts = stg.Events || [];
             for (var j = 0; j < evts.length; j++) {
                 var ev = evts[j];
                 var t1 = ((ev.T1||[{}])[0].Nm||''), t2 = ((ev.T2||[{}])[0].Nm||'');
-                var isTurk = turkTeams.some(function(t){ return t1.toLowerCase().includes(t)||t2.toLowerCase().includes(t); });
+                var isTurk = isTurkLeague || turkTeams.some(function(t){ return t1.toLowerCase().includes(t)||t2.toLowerCase().includes(t); });
                 
-                // Sadece önemli lig veya Türk takım maçları
-                if (!isImportant && !isTurk) continue;
+                if (!isTurk) continue;
                 
                 var key = t1 + '-' + t2;
                 var eps = ev.Eps || 'NS';
                 var isLive = eps.includes("'") || eps === '1H' || eps === '2H' || eps === 'HT';
-                if (!isLive) continue;
                 
                 var s1 = ev.Tr1 || 0, s2 = ev.Tr2 || 0;
-                var yr1 = ev.Tr1OR || 0, yr2 = ev.Tr2OR || 0;
-                
                 var prev = lastMatchEvents[key];
                 var totalGoals = s1 + s2;
-                var totalReds = yr1 + yr2;
+                
+                // Maç 30dk sonra başlıyor bildirimi
+                if (eps === 'NS' && ev.Esd) {
+                    var mt = String(ev.Esd).substring(8,10) + ':' + String(ev.Esd).substring(10,12);
+                    var mh = parseInt(mt.substring(0,2)) + 6;
+                    if (mh >= 24) mh -= 24;
+                    var now = new Date();
+                    var matchMin = mh * 60 + parseInt(mt.substring(3));
+                    var nowMin = now.getHours() * 60 + now.getMinutes();
+                    var diff = matchMin - nowMin;
+                    var preKey = key + '-pre';
+                    if (diff > 0 && diff <= 30 && !lastMatchEvents[preKey]) {
+                        lastMatchEvents[preKey] = true;
+                        sendMatchAlert('MAÇ YAKLAŞIYOR', t1 + ' vs ' + t2 + ' - ' + diff + ' dk sonra!', 'info');
+                    }
+                }
+                
+                if (!isLive) continue;
                 
                 if (!prev) {
-                    lastMatchEvents[key] = { goals: totalGoals, reds: totalReds };
+                    // Maç yeni başladı bildirimi
+                    lastMatchEvents[key] = { goals: totalGoals, status: eps };
+                    sendMatchAlert('MAÇ BAŞLADI!', t1 + ' vs ' + t2, 'kickoff');
                     continue;
                 }
                 
+                // GOL
                 if (totalGoals > prev.goals) {
-                    var goalTeam = (s1 > (prev.goals - (ev.Tr2||0))) ? t1 : t2;
+                    var goalTeam = s1 > (totalGoals - s2 - (totalGoals - prev.goals)) ? t1 : t2;
                     sendMatchAlert('GOL!', goalTeam + '! ' + t1 + ' ' + s1 + ' - ' + s2 + ' ' + t2 + ' (' + eps + ')', 'goal');
                 }
                 
-                if (totalReds > prev.reds) {
-                    sendMatchAlert('KIRMIZI KART!', t1 + ' ' + s1 + ' - ' + s2 + ' ' + t2 + ' (' + eps + ')', 'redcard');
+                // DEVRE ARASI
+                if (eps === 'HT' && prev.status !== 'HT') {
+                    sendMatchAlert('DEVRE ARASI', t1 + ' ' + s1 + ' - ' + s2 + ' ' + t2, 'halftime');
                 }
                 
-                lastMatchEvents[key] = { goals: totalGoals, reds: totalReds };
+                // 2. YARI BAŞLADI
+                if (eps === '2H' && prev.status !== '2H' && prev.status === 'HT') {
+                    sendMatchAlert('2. YARI BAŞLADI', t1 + ' ' + s1 + ' - ' + s2 + ' ' + t2, 'kickoff');
+                }
+                
+                lastMatchEvents[key] = { goals: totalGoals, status: eps };
+            }
+            
+            // MAÇ BİTTİ kontrolü
+            for (var j = 0; j < evts.length; j++) {
+                var ev = evts[j];
+                var t1 = ((ev.T1||[{}])[0].Nm||''), t2 = ((ev.T2||[{}])[0].Nm||'');
+                var isTurk2 = isTurkLeague || turkTeams.some(function(t){ return t1.toLowerCase().includes(t)||t2.toLowerCase().includes(t); });
+                if (!isTurk2) continue;
+                var key2 = t1 + '-' + t2;
+                var eps2 = ev.Eps || 'NS';
+                var prev2 = lastMatchEvents[key2];
+                if (eps2 === 'FT' && prev2 && prev2.status !== 'FT') {
+                    sendMatchAlert('MAÇ BİTTİ', t1 + ' ' + (ev.Tr1||0) + ' - ' + (ev.Tr2||0) + ' ' + t2, 'fulltime');
+                    lastMatchEvents[key2] = { goals: (ev.Tr1||0) + (ev.Tr2||0), status: 'FT' };
+                }
             }
         }
     }
@@ -313,22 +349,26 @@
         notifShowing = true;
         var item = notifQueue.shift();
         
-        var accentColor = item.type === 'goal' ? '#00ff88' : item.type === 'redcard' ? '#ff0040' : item.type === 'yellowcard' ? '#FFD700' : '#00d4ff';
+        var accentColor = {goal:'#00ff88', redcard:'#ff0040', yellowcard:'#FFD700', penalty:'#00d4ff', kickoff:'#00d4ff', halftime:'#ff9900', fulltime:'#aaaaaa', info:'#00d4ff'}[item.type] || '#00d4ff';
 
         // İkonlar
         var iconSvg = '';
         if (item.type === 'goal') {
-            // Top - yıldızlardan oluşan futbol topu
             iconSvg = '<svg width="22" height="22" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#00ff88" stroke-width="1.5"/><polygon points="12,3 13.5,8 18.5,8 14.5,11.5 16,17 12,13.5 8,17 9.5,11.5 5.5,8 10.5,8" fill="#00ff88"/></svg>';
         } else if (item.type === 'redcard') {
-            // Kırmızı kart
             iconSvg = '<svg width="22" height="22" viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="2" fill="#ff0040" stroke="#ff4070" stroke-width="0.5"/></svg>';
         } else if (item.type === 'yellowcard') {
-            // Sarı kart
             iconSvg = '<svg width="22" height="22" viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="2" fill="#FFD700" stroke="#FFA500" stroke-width="0.5"/></svg>';
         } else if (item.type === 'penalty') {
-            // Ceza sahası - kale direği
-            iconSvg = '<svg width="22" height="22" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="2" fill="#00d4ff"/><rect x="3" y="4" width="2" height="14" fill="#00d4ff"/><rect x="19" y="4" width="2" height="14" fill="#00d4ff"/><circle cx="12" cy="14" r="3" fill="none" stroke="#00d4ff" stroke-width="1.5"/><line x1="12" y1="17" x2="12" y2="21" stroke="#00d4ff" stroke-width="1.5"/></svg>';
+            iconSvg = '<svg width="22" height="22" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="2" fill="#00d4ff"/><rect x="3" y="4" width="2" height="14" fill="#00d4ff"/><rect x="19" y="4" width="2" height="14" fill="#00d4ff"/><circle cx="12" cy="14" r="3" fill="none" stroke="#00d4ff" stroke-width="1.5"/></svg>';
+        } else if (item.type === 'kickoff') {
+            iconSvg = '<svg width="22" height="22" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#00d4ff" stroke-width="1.5"/><path d="M8 12l3-3v6z" fill="#00d4ff"/></svg>';
+        } else if (item.type === 'halftime') {
+            iconSvg = '<svg width="22" height="22" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#ff9900" stroke-width="1.5"/><rect x="9" y="7" width="2" height="10" fill="#ff9900"/><rect x="13" y="7" width="2" height="10" fill="#ff9900"/></svg>';
+        } else if (item.type === 'fulltime') {
+            iconSvg = '<svg width="22" height="22" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#aaa" stroke-width="1.5"/><rect x="8" y="8" width="8" height="8" rx="1" fill="#aaa"/></svg>';
+        } else {
+            iconSvg = '<svg width="22" height="22" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#00d4ff" stroke-width="1.5"/><circle cx="12" cy="12" r="3" fill="#00d4ff"/></svg>';
         }
 
         var banner = document.createElement('div');
@@ -858,11 +898,12 @@
     }
 
     function tryNextServer() {
-        // Kullanıcı elle sunucu seçtiyse otomatik atlama yapma
         if (manualServerSelect) {
             manualServerSelect = false;
             loadingOverlay.classList.add('hidden');
-            showStreamError();
+            hideFreezeOverlay();
+            // Boş sunucu seçildiyse bakım moduna geç
+            showMaintenance();
             return;
         }
         const servers = SERVER_ALTERNATIVES[currentChannel] || [];
@@ -873,6 +914,7 @@
             if (hls) { try { hls.destroy(); } catch(e){} hls = null; }
             setupStream();
         } else {
+            hideFreezeOverlay();
             showMaintenance();
         }
     }
