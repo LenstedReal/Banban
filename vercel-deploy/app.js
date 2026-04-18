@@ -63,8 +63,8 @@
         { name: 'Call of Duty Mobile', url: 'https://play.google.com/store/apps/details?id=com.activision.callofduty.shooter', color: '#00CC44', vid: 'ad_cod' },
         { name: 'Lords Mobile', url: 'https://play.google.com/store/apps/details?id=com.igg.android.lordsmobile', color: '#CC0000', vid: 'ad_lords' }
     ];
-    function shuffleAds(){var a=ADS.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}sessionStorage.setItem('bb_ads',JSON.stringify(a));sessionStorage.setItem('bb_adi','0');return a;}
-    function getAds(){var s=sessionStorage.getItem('bb_ads');return s?JSON.parse(s):shuffleAds();}
+    function shuffleAds(){var a=ADS.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}sessionStorage.setItem('bb_ads',JSON.stringify(a));sessionStorage.setItem('bb_adi','0');sessionStorage.setItem('bb_adv','3');return a;}
+    function getAds(){var v=sessionStorage.getItem('bb_adv');if(v!=='3'){shuffleAds();}var s=sessionStorage.getItem('bb_ads');return s?JSON.parse(s):shuffleAds();}
     function getAd(){var ads=getAds();var i=parseInt(sessionStorage.getItem('bb_adi')||'0');if(i>=ads.length)i=0;return ads[i];}
     function nextAd(){var ads=getAds();var i=parseInt(sessionStorage.getItem('bb_adi')||'0')+1;if(i>=ads.length)i=0;sessionStorage.setItem('bb_adi',String(i));}
 

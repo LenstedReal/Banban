@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>banbansports UNDERGROUND HD | SÜPER LİG</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -24,7 +24,7 @@
         }
 
         body {
-            font-family: 'Share Tech Mono', 'Courier New', monospace;
+            font-family: 'VT323', 'Share Tech Mono', 'Courier New', monospace;
             background: var(--bg-dark);
             color: var(--text);
             min-height: 100vh;
@@ -106,7 +106,7 @@
         .notif-toggle {
             display: flex; align-items: center; gap: 8px; cursor: pointer;
             background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.15);
-            padding: 6px 14px; font-family: 'Share Tech Mono', monospace; font-size: 10px;
+            padding: 6px 14px; font-family: 'VT323', 'Share Tech Mono', monospace; font-size: 10px;
             color: var(--text-dim); transition: all 0.3s; letter-spacing: 1px;
         }
         .notif-toggle:hover { border-color: var(--cyan); color: var(--cyan); }
@@ -118,7 +118,7 @@
         .channel-selector { background: var(--bg-card); border-bottom: 1px solid rgba(255, 0, 170, 0.2); padding: 12px 20px; }
         .channel-tabs { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; max-width: 1200px; margin: 0 auto; }
         .channel-tab {
-            font-family: 'Share Tech Mono', monospace; font-size: 10px; padding: 8px 14px;
+            font-family: 'VT323', 'Share Tech Mono', monospace; font-size: 13px; padding: 8px 14px;
             background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1);
             color: var(--text-dim); cursor: pointer; transition: all 0.3s;
             text-transform: uppercase; letter-spacing: 1px;
@@ -168,7 +168,7 @@
         .retry-btn {
             display: flex; align-items: center; gap: 10px; background: transparent;
             border: 2px solid var(--pink); color: var(--pink); padding: 12px 24px;
-            font-family: 'Share Tech Mono', monospace; font-size: 13px; cursor: pointer;
+            font-family: 'VT323', 'Share Tech Mono', monospace; font-size: 13px; cursor: pointer;
             transition: all 0.3s; text-transform: uppercase; letter-spacing: 2px;
         }
         .retry-btn:hover { background: linear-gradient(135deg, var(--pink), var(--purple)); color: var(--text); border-color: transparent; box-shadow: 0 0 20px var(--pink); }
@@ -212,7 +212,7 @@
             background: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(255, 0, 170, 0.2));
             border: 1px solid var(--pink); color: var(--pink); padding: 4px 10px;
             font-size: 10px; font-weight: bold; letter-spacing: 1px; cursor: pointer;
-            font-family: 'Share Tech Mono', monospace; transition: all 0.3s;
+            font-family: 'VT323', 'Share Tech Mono', monospace; transition: all 0.3s;
         }
         .quality-btn:hover { box-shadow: 0 0 10px var(--pink); }
         .quality-dropdown {
@@ -224,7 +224,7 @@
         .quality-dropdown.open { display: block; }
         .quality-option {
             padding: 8px 14px; font-size: 11px; color: var(--text-dim); cursor: pointer;
-            font-family: 'Share Tech Mono', monospace; transition: all 0.2s;
+            font-family: 'VT323', 'Share Tech Mono', monospace; transition: all 0.2s;
             display: flex; justify-content: space-between; align-items: center;
         }
         .quality-option:hover { background: rgba(255, 0, 170, 0.15); color: var(--pink); }
@@ -275,7 +275,7 @@
             display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-bottom: 15px;
         }
         .league-filter-btn {
-            font-family: 'Share Tech Mono', monospace; font-size: 9px; padding: 5px 10px;
+            font-family: 'VT323', 'Share Tech Mono', monospace; font-size: 9px; padding: 5px 10px;
             background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1);
             color: var(--text-dim); cursor: pointer; transition: all 0.3s; letter-spacing: 1px;
         }
@@ -291,7 +291,7 @@
         .match-card:hover { border-color: var(--cyan); box-shadow: 0 0 10px rgba(0,240,255,0.1); }
         .match-card-league { font-size: 9px; color: var(--pink); letter-spacing: 2px; margin-bottom: 8px; }
         .match-card-teams { display: flex; justify-content: space-between; align-items: center; }
-        .match-card-team { font-size: 12px; font-weight: bold; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .match-card-team { font-size: 14px; font-weight: bold; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .match-card-score { font-family: 'Orbitron', sans-serif; font-size: 16px; color: var(--cyan); font-weight: 700; min-width: 50px; text-align: center; }
         .match-card-status { font-size: 10px; color: var(--text-dim); margin-top: 6px; text-align: center; }
         .match-card-status.live { color: var(--green); }
@@ -301,7 +301,7 @@
             display: flex; align-items: center; gap: 8px;
             background: linear-gradient(135deg, var(--pink), var(--purple));
             border: none; color: var(--text); padding: 10px 20px;
-            font-family: 'Share Tech Mono', monospace; font-size: 12px; font-weight: bold;
+            font-family: 'VT323', 'Share Tech Mono', monospace; font-size: 12px; font-weight: bold;
             cursor: pointer; transition: all 0.3s; text-transform: uppercase; letter-spacing: 2px; z-index: 10;
         }
         .unmute-btn:hover { box-shadow: 0 0 30px var(--pink); transform: scale(1.05); }
@@ -341,7 +341,7 @@
         .server-title::before, .server-title::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--cyan), transparent); }
         .server-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
         .server-item {
-            font-family: 'Share Tech Mono', monospace; font-size: 11px; padding: 10px 14px;
+            font-family: 'VT323', 'Share Tech Mono', monospace; font-size: 11px; padding: 10px 14px;
             background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08);
             color: var(--text-dim); cursor: pointer; display: flex;
             align-items: center; justify-content: space-between; transition: all 0.3s;
