@@ -315,74 +315,45 @@
         notifShowing = true;
         var item = notifQueue.shift();
         
-        var icons = {
-            goal: '<svg viewBox="0 0 24 24" width="32" height="32" fill="#fff"><circle cx="12" cy="12" r="10" fill="none" stroke="#fff" stroke-width="2"/><path d="M12 2l1.5 4.5h4.7l-3.8 2.8 1.4 4.5L12 11l-3.8 2.8 1.4-4.5-3.8-2.8h4.7z" fill="#fff"/></svg>',
-            redcard: '<svg viewBox="0 0 24 24" width="32" height="32"><rect x="5" y="2" width="14" height="20" rx="2" fill="#ff0040"/></svg>',
-            penalty: '<svg viewBox="0 0 24 24" width="32" height="32" fill="#fff"><circle cx="12" cy="12" r="10" fill="none" stroke="#FFD700" stroke-width="2"/><text x="12" y="16" text-anchor="middle" font-size="12" fill="#FFD700" font-weight="bold">P</text></svg>',
-            yellowcard: '<svg viewBox="0 0 24 24" width="32" height="32"><rect x="5" y="2" width="14" height="20" rx="2" fill="#FFD700"/></svg>'
-        };
-        
-        var colors = {
-            goal: 'linear-gradient(135deg, #00ff88, #00cc66)',
-            redcard: 'linear-gradient(135deg, #ff0040, #cc0033)',
-            penalty: 'linear-gradient(135deg, #FFD700, #FFA500)',
-            yellowcard: 'linear-gradient(135deg, #FFD700, #FFA500)'
-        };
+        var accentColor = item.type === 'goal' ? '#00ff88' : item.type === 'redcard' ? '#ff0040' : '#FFD700';
 
         var banner = document.createElement('div');
         banner.className = 'match-notif-banner';
-        banner.style.cssText = 'position:fixed;top:-120px;left:50%;transform:translateX(-50%);z-index:99999;' +
-            'width:92%;max-width:420px;padding:14px 18px;border-radius:16px;' +
-            'background:' + (colors[item.type] || colors.goal) + ';' +
-            'box-shadow:0 8px 32px rgba(0,0,0,0.5),0 0 20px ' + (item.type === 'goal' ? 'rgba(0,255,136,0.4)' : item.type === 'redcard' ? 'rgba(255,0,64,0.4)' : 'rgba(255,215,0,0.4)') + ';' +
-            'display:flex;align-items:center;gap:14px;cursor:pointer;' +
-            'transition:top 0.5s cubic-bezier(0.34,1.56,0.64,1);' +
-            'font-family:VT323,monospace;';
+        banner.style.cssText = 'position:fixed;top:-80px;left:50%;transform:translateX(-50%);z-index:99999;' +
+            'width:90%;max-width:380px;padding:10px 14px;border-radius:12px;' +
+            'background:rgba(15,15,25,0.95);border:1px solid ' + accentColor + '50;' +
+            'box-shadow:0 4px 20px rgba(0,0,0,0.6);' +
+            'display:flex;align-items:center;gap:10px;cursor:pointer;' +
+            'transition:top 0.4s cubic-bezier(0.34,1.56,0.64,1);' +
+            'font-family:VT323,monospace;backdrop-filter:blur(10px);';
 
-        banner.innerHTML = '<div style="flex-shrink:0;">' + (icons[item.type] || icons.goal) + '</div>' +
+        var dot = '<div style="width:8px;height:8px;border-radius:50%;background:' + accentColor + ';flex-shrink:0;box-shadow:0 0 8px ' + accentColor + ';"></div>';
+        
+        banner.innerHTML = dot +
             '<div style="flex:1;min-width:0;">' +
-            '<div style="font-size:18px;font-weight:900;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.3);letter-spacing:2px;">' + item.title + '</div>' +
-            '<div style="font-size:14px;color:rgba(255,255,255,0.9);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + item.body + '</div>' +
-            '</div>' +
-            '<div style="flex-shrink:0;font-size:11px;color:rgba(255,255,255,0.6);">banbansports</div>';
+            '<div style="font-size:14px;color:' + accentColor + ';letter-spacing:1px;">' + item.title + '</div>' +
+            '<div style="font-size:13px;color:rgba(255,255,255,0.85);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + item.body + '</div>' +
+            '</div>';
 
         document.body.appendChild(banner);
+        setTimeout(function() { banner.style.top = '12px'; }, 50);
 
-        // Animasyon: yukarıdan kayarak gel
-        setTimeout(function() { banner.style.top = '16px'; }, 50);
-
-        // Gol için ekstra efekt: ekran flash
-        if (item.type === 'goal') {
+        // Gol/kırmızı kart için hafif ekran flash
+        if (item.type === 'goal' || item.type === 'redcard') {
             var flash = document.createElement('div');
             flash.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:99998;' +
-                'background:rgba(0,255,136,0.15);pointer-events:none;' +
-                'animation:goalFlash 0.6s ease-out forwards;';
+                'background:' + accentColor + '15;pointer-events:none;animation:goalFlash 0.5s ease-out forwards;';
             document.body.appendChild(flash);
-            setTimeout(function() { flash.remove(); }, 600);
+            setTimeout(function() { flash.remove(); }, 500);
         }
 
-        // Kırmızı kart için ekran flash
-        if (item.type === 'redcard') {
-            var flash = document.createElement('div');
-            flash.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:99998;' +
-                'background:rgba(255,0,64,0.15);pointer-events:none;' +
-                'animation:goalFlash 0.6s ease-out forwards;';
-            document.body.appendChild(flash);
-            setTimeout(function() { flash.remove(); }, 600);
-        }
-
-        // 5sn sonra yukarı kayarak git
         setTimeout(function() {
-            banner.style.top = '-120px';
-            setTimeout(function() {
-                banner.remove();
-                processNotifQueue();
-            }, 500);
-        }, 5000);
+            banner.style.top = '-80px';
+            setTimeout(function() { banner.remove(); processNotifQueue(); }, 400);
+        }, 4000);
 
-        // Tıklayınca kapat
         banner.onclick = function() {
-            banner.style.top = '-120px';
+            banner.style.top = '-80px';
             setTimeout(function() { banner.remove(); processNotifQueue(); }, 300);
         };
     }
