@@ -288,18 +288,23 @@
     function updateScoreboard(match) {
         document.getElementById('team1').textContent = match.team1 || '---';
         document.getElementById('team2').textContent = match.team2 || '---';
-        document.getElementById('score1').textContent = match.score1 || 0;
-        document.getElementById('score2').textContent = match.score2 || 0;
-        document.getElementById('leagueInfo').textContent = match.league || 'SÜPER LİG';
         
         const status = match.status || 'CANLI';
+        const isPreMatch = status.includes('MAÇ ÖNÜ') || status === 'BAŞLAMADI' || status.includes('SONRAKİ');
+        
+        // Maç başlamadıysa vs göster, başladıysa skor
+        document.getElementById('score1').textContent = isPreMatch ? 'vs' : (match.score1 || 0);
+        document.getElementById('score2').textContent = isPreMatch ? '' : (match.score2 || 0);
+        document.getElementById('scoreSep').style.display = isPreMatch ? 'none' : '';
+        document.getElementById('leagueInfo').textContent = match.league || 'SÜPER LİG';
+        
         if (status === 'MAÇ SONU' || status === 'FT') {
             matchMinute.textContent = 'MAÇ SONU';
             matchMinute.className = 'match-minute ended';
             statusText.textContent = 'BİTTİ';
             statusBadge.className = 'live-badge ended';
-        } else if (status === 'BAŞLAMADI' || status.includes('SONRAKİ')) {
-            matchMinute.textContent = status;
+        } else if (isPreMatch) {
+            matchMinute.textContent = status === 'BAŞLAMADI' ? 'MAÇ ÖNÜ' : status;
             matchMinute.className = 'match-minute maintenance';
             statusText.textContent = 'YAKINDA';
             statusBadge.className = 'live-badge maintenance';
@@ -787,19 +792,44 @@
     }
 
     function startCast() {
-        if (video.remote && typeof video.remote.prompt === 'function') {
-            video.remote.prompt().catch(() => showCastHelp());
-        } else if (video.webkitShowPlaybackTargetPicker) {
-            video.webkitShowPlaybackTargetPicker();
-        } else if (navigator.presentation && navigator.presentation.defaultRequest) {
-            navigator.presentation.defaultRequest.start().catch(() => showCastHelp());
-        } else {
-            showCastHelp();
+        // Android: Bluetooth ayarlarına yönlendir
+        if (/android/i.test(navigator.userAgent)) {
+            // Önce Remote Playback API dene
+            if (video.remote && typeof video.remote.prompt === 'function') {
+                video.remote.prompt().catch(function() {
+                    // Bluetooth ayarlarına yönlendir
+                    try { window.location.href = 'intent://settings/bluetooth#Intent;scheme=android-app;end'; } catch(e) {}
+                    try { window.open('intent:#Intent;action=android.settings.BLUETOOTH_SETTINGS;end', '_blank'); } catch(e) {}
+                });
+            } else {
+                try { window.open('intent:#Intent;action=android.settings.CAST_SETTINGS;end', '_blank'); } catch(e) {
+                    try { window.open('intent:#Intent;action=android.settings.BLUETOOTH_SETTINGS;end', '_blank'); } catch(e2) {
+                        alert('Bildirim panelini aşağı indirip "Yayınla" veya "Smart View" butonuna tıklayın.');
+                    }
+                }
+            }
+            return;
         }
-    }
-
-    function showCastHelp() {
-        alert("TV'ye Yansıtma:\n\n- Chrome: Sağ tık > Yayınla\n- iPhone/iPad: Kontrol Merkezi > Ekran Yansıtma\n- Android: Bildirim çubuğu > Yayınla/Screen Cast\n- Smart TV: Tarayıcıdan bu adresi aç\n- Bluetooth: Telefonunuzun Bluetooth ayarlarından bağlanın");
+        // iOS/Mac
+        if (video.webkitShowPlaybackTargetPicker) {
+            video.webkitShowPlaybackTargetPicker();
+            return;
+        }
+        // Presentation API
+        if (navigator.presentation && navigator.presentation.defaultRequest) {
+            navigator.presentation.defaultRequest.start().catch(function() {
+                alert('Tarayıcınızdan: Menü > Yayınla (Cast) seçeneğini kullanın.');
+            });
+            return;
+        }
+        // Fallback
+        if (video.remote && typeof video.remote.prompt === 'function') {
+            video.remote.prompt().catch(function() {
+                alert('Tarayıcınızdan: Menü > Yayınla (Cast) seçeneğini kullanın.');
+            });
+        } else {
+            alert('Tarayıcınızdan: Menü > Yayınla (Cast) seçeneğini kullanın.');
+        }
     }
 
     // Fullscreen change
@@ -894,20 +924,8 @@
                 text.style.color = 'var(--green)';
             } else if (type === 'cellular' || eff) {
                 icon.innerHTML = '<path d="M2 22h20V2z"/>';
-                // 5G desteği
-                if (conn.downlink && conn.downlink > 50) {
-                    text.textContent = '5G';
-                    text.style.color = 'var(--cyan)';
-                } else if (eff === '4g' || (conn.downlink && conn.downlink > 5)) {
-                    text.textContent = '4G';
-                    text.style.color = 'var(--green)';
-                } else if (eff === '3g') {
-                    text.textContent = '3G';
-                    text.style.color = 'var(--orange)';
-                } else {
-                    text.textContent = '2G';
-                    text.style.color = 'var(--red)';
-                }
+                text.textContent = '5G';
+                text.style.color = 'var(--cyan)';
                 if (conn.downlink && conn.downlink < 1.5) suggestQualityDrop();
             } else {
                 text.textContent = eff === '4g' ? '5G' : eff ? eff.toUpperCase() : 'Online';

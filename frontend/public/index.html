@@ -373,7 +373,17 @@
             .channel-tabs { gap: 5px; }
             .channel-tab { padding: 6px 10px; font-size: 9px; }
             .server-grid { grid-template-columns: repeat(2, 1fr); }
-            .video-controls { opacity: 1; padding: 10px; }
+            .video-controls { opacity: 1; padding: 8px 10px; }
+            .controls-left, .controls-right { gap: 8px; }
+            .control-btn { padding: 3px; }
+            .control-btn svg { width: 18px; height: 18px; }
+            .volume-slider { width: 50px; }
+            .quality-btn { padding: 3px 6px; font-size: 9px; }
+            .conn-indicator { font-size: 8px; }
+            .conn-indicator svg { width: 12px; height: 12px; }
+            .live-indicator { font-size: 9px; }
+            .live-indicator svg { width: 10px; height: 10px; }
+            .video-wrapper { aspect-ratio: 16 / 9; overflow: hidden; }
         }
     </style>
 </head>
@@ -432,9 +442,9 @@
                         <span class="team-name" id="team1" data-testid="team1">Yükleniyor...</span>
                     </div>
                     <div class="score-container">
-                        <span class="score" id="score1" data-testid="score1">0</span>
-                        <span class="score-separator">:</span>
-                        <span class="score" id="score2" data-testid="score2">0</span>
+                        <span class="score" id="score1" data-testid="score1">vs</span>
+                        <span class="score-separator" id="scoreSep">:</span>
+                        <span class="score" id="score2" data-testid="score2"></span>
                     </div>
                     <div class="team team-right">
                         <span class="team-name" id="team2" data-testid="team2">Yükleniyor...</span>
