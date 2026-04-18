@@ -474,9 +474,10 @@
                 
                 const ch = CHANNELS[channel];
                 if (!ch || ch.status === 'maintenance') {
-                    // Önceki stream'i temizle
-                    if (hls) { hls.destroy(); hls = null; }
-                    if (crashCheckInterval) clearInterval(crashCheckInterval);
+                    if (hls) { try { hls.destroy(); } catch(e){} hls = null; }
+                    if (crashCheckInterval) { clearInterval(crashCheckInterval); crashCheckInterval = null; }
+                    video.pause();
+                    video.removeAttribute('src');
                     showMaintenance();
                     return;
                 }
@@ -492,6 +493,7 @@
     // STREAM SETUP
     // ============================================
     const MAX_RETRIES = 3;
+    let streamSessionId = 0; // Her kanal geçişinde artar, eski callback'leri engeller
 
     function setupStream() {
         const channel = CHANNELS[currentChannel];
@@ -503,8 +505,19 @@
         maintenanceOverlay.classList.add('hidden');
         hideFreezeOverlay();
 
-        // Destroy previous HLS
-        if (hls) { hls.destroy(); hls = null; }
+        // === CLEANUP: Önceki stream/video'yu tamamen temizle ===
+        if (hls) { try { hls.destroy(); } catch(e){} hls = null; }
+        if (crashCheckInterval) { clearInterval(crashCheckInterval); crashCheckInterval = null; }
+        video.pause();
+        video.removeAttribute('src');
+        video.load(); // Önceki buffer'ı temizle
+        video.onerror = null;
+        video.onended = null;
+        video.style.filter = 'none';
+        isPlaying = false;
+        retryCount = 0;
+        streamSessionId++; // Eski callback'leri geçersiz kıl
+        const mySession = streamSessionId;
 
         // Loading timeout - 15s sonra hala yüklenemezse hata göster
         const loadTimeout = setTimeout(() => {
@@ -518,8 +531,6 @@
         if (channel.isAd) {
             clearTimeout(loadTimeout);
             loadingOverlay.classList.add('hidden');
-            if (hls) { hls.destroy(); hls = null; }
-            video.removeAttribute('src');
             video.loop = false;
             video.muted = isMuted;
             video.style.filter = 'none';
@@ -554,8 +565,6 @@
         if (channel.isLocalVideo) {
             clearTimeout(loadTimeout);
             loadingOverlay.classList.add('hidden');
-            if (hls) { hls.destroy(); hls = null; }
-            video.removeAttribute('src');
             video.loop = true;
             video.muted = isMuted;
             video.style.filter = 'none';
@@ -592,6 +601,7 @@
             hls.attachMedia(video);
 
             hls.on(Hls.Events.MANIFEST_PARSED, (e, data) => {
+                if (mySession !== streamSessionId) return; // Kanal değişti, eski callback'i yoksay
                 clearTimeout(loadTimeout);
                 loadingOverlay.classList.add('hidden');
                 statusText.textContent = 'CANLI';
@@ -609,6 +619,7 @@
             });
 
             hls.on(Hls.Events.ERROR, (e, data) => {
+                if (mySession !== streamSessionId) return; // Kanal değişti, eski hatayı yoksay
                 if (!data.fatal) return;
                 
                 if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
