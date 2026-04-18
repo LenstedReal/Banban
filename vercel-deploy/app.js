@@ -1276,4 +1276,22 @@
                 filterLeague(btn.dataset.league);
             });
         });
+
+        // FPS Sayacı (video üstünde, küçük)
+        var fpsEl = document.createElement('div');
+        fpsEl.id = 'fpsCounter';
+        fpsEl.style.cssText = 'position:absolute;top:15px;right:60px;z-index:15;font-family:VT323,monospace;font-size:12px;color:var(--green);opacity:0.6;pointer-events:none;text-shadow:0 0 4px rgba(0,255,136,0.5);';
+        document.querySelector('.video-wrapper').appendChild(fpsEl);
+        var fpsFrames = 0, fpsLast = performance.now();
+        function fpsLoop() {
+            fpsFrames++;
+            var now = performance.now();
+            if (now - fpsLast >= 1000) {
+                fpsEl.textContent = fpsFrames + ' FPS';
+                fpsFrames = 0;
+                fpsLast = now;
+            }
+            requestAnimationFrame(fpsLoop);
+        }
+        requestAnimationFrame(fpsLoop);
     });
