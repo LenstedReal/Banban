@@ -775,16 +775,27 @@
     }
 
     function updateServerUI() {
-        document.querySelectorAll('.server-item').forEach((item, i) => {
+        var servers = SERVER_ALTERNATIVES[currentChannel] || [];
+        var ch = CHANNELS[currentChannel];
+        var isLocal = ch && (ch.isAd || ch.isLocalVideo || ch.status === 'maintenance');
+        
+        document.querySelectorAll('.server-item').forEach(function(item, i) {
             item.classList.toggle('active', i === currentServerIndex);
-            // Sunucu durumlarını güncelle
-            const status = item.querySelector('.server-status');
+            var status = item.querySelector('.server-status');
             if (status) {
-                const servers = SERVER_ALTERNATIVES[currentChannel] || [];
-                if (i < servers.length) {
+                if (isLocal) {
+                    // Reklam/Demo3/Bakım kanallarında sunucu seçimi gereksiz
+                    status.className = 'server-status';
+                    item.style.opacity = '0.3';
+                    item.style.pointerEvents = 'none';
+                } else if (i < servers.length) {
                     status.className = i === currentServerIndex ? 'server-status online' : 'server-status checking';
+                    item.style.opacity = '1';
+                    item.style.pointerEvents = 'auto';
                 } else {
                     status.className = 'server-status';
+                    item.style.opacity = '0.3';
+                    item.style.pointerEvents = 'none';
                 }
             }
         });
