@@ -1,5 +1,7 @@
 // banbansports Service Worker - arka plan bildirimleri
-const SITE_URL = 'https://banbansports978.vercel.app';
+function getSiteUrl() {
+    try { return self.location.origin || 'https://banbansports978.vercel.app'; } catch(e) { return 'https://banbansports978.vercel.app'; }
+}
 
 function iconFor(type) {
     var map = {
@@ -21,14 +23,15 @@ self.addEventListener('activate', function(e) { e.waitUntil(self.clients.claim()
 
 self.addEventListener('notificationclick', function(e) {
     e.notification.close();
+    var siteUrl = getSiteUrl();
     e.waitUntil(
         self.clients.matchAll({type: 'window'}).then(function(clients) {
             for (var i = 0; i < clients.length; i++) {
-                if (clients[i].url.includes('banbansports') && 'focus' in clients[i]) {
+                if ('focus' in clients[i]) {
                     return clients[i].focus();
                 }
             }
-            return self.clients.openWindow(SITE_URL);
+            return self.clients.openWindow(siteUrl);
         })
     );
 });

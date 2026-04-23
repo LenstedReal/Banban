@@ -297,9 +297,9 @@ async def livescore_today():
 async def get_channels():
     """Return all channel statuses"""
     channels = {
-        "demo1": {"name": "DEMO 1", "status": "online"},
-        "demo2": {"name": "DEMO 2", "status": "online"},
-        "reklam": {"name": "REKLAM", "status": "online"},
+        "demo1": {"name": "SİNTEL TRAILER", "status": "online"},
+        "demo2": {"name": "TEARS OF STEEL TRAILER", "status": "online"},
+        "demo3": {"name": "BIG BUCK BUNNY TRAILER", "status": "online"},
         "trt1": {"name": "TRT 1", "status": "online"},
         "trthaber": {"name": "TRT HABER", "status": "online"},
         "tv8": {"name": "TV 8", "status": "online"},
