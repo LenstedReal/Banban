@@ -83,9 +83,8 @@
     function nextAd(){var ads=getAds();var i=parseInt(sessionStorage.getItem('bb_adi')||'0')+1;if(i>=ads.length)i=0;sessionStorage.setItem('bb_adi',String(i));}
 
     const CHANNELS = {
-        demo1: { name: 'SİNTEL TRAILER', status: 'online', stream: STREAMS.sintel_mp4, isTrailer: true, isMp4: true },
-        demo2: { name: 'TEARS OF STEEL TRAILER', status: 'online', stream: STREAMS.tears_of_steel, subtitles: 'tears-of-steel-tr.vtt', subLabel: 'Türkçe', subLang: 'tr', isTrailer: true },
-        demo3: { name: 'BIG BUCK BUNNY TRAILER', status: 'online', stream: STREAMS.big_buck_bunny_mp4, subtitles: 'big-buck-bunny-en.vtt', subLabel: 'English', subLang: 'en', isTrailer: true, isMp4: true },
+        fastx: { name: 'HIZLI VE ÖFKELİ 10', status: 'online', isTrailer: true, isYoutube: true, youtubeId: '32RAq6JzY-w', isNew: true },
+        spiderman: { name: 'SPIDER-MAN: BRAND NEW DAY', status: 'online', isTrailer: true, isYoutube: true, youtubeId: 'JfVOs4VSpmA', isNew: true },
         trt1: { name: 'TRT 1', status: 'online', stream: STREAMS.trt1 },
         trthaber: { name: 'TRT HABER', status: 'online', stream: STREAMS.trthaber },
         tv8: { name: 'TV 8', status: 'online', stream: STREAMS.tv8 },
@@ -98,13 +97,13 @@
         atv: { name: 'ATV', status: 'maintenance' },
         aspor: { name: 'A SPOR', status: 'maintenance' }
     };
+    let currentChannel = 'fastx';
 
     const SPORTS_API = 'https://www.thesportsdb.com/api/v1/json/3';
 
     // ============================================
     // STATE
     // ============================================
-    let currentChannel = 'demo1';
     let currentServerIndex = 0;
     let hls = null;
     let isPlaying = false;
@@ -969,6 +968,115 @@
     var _prerollMaxTimer = null;
     var _prerollSessionId = 0;
 
+    // ============================================
+    // i18n - TR/EN (kullanıcı Türkiye dışındaysa İngilizce)
+    // ============================================
+    function detectDefaultLang() {
+        try {
+            var saved = localStorage.getItem('bb_lang');
+            if (saved === 'tr' || saved === 'en') return saved;
+        } catch(e) {}
+        var nav = (navigator.language || navigator.userLanguage || 'tr').toLowerCase();
+        // TZ kontrolü de: Europe/Istanbul → TR
+        try {
+            var tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+            if (/istanbul|turkey|europe\/istanbul/i.test(tz)) return 'tr';
+        } catch(e) {}
+        if (nav.startsWith('tr')) return 'tr';
+        return 'en';
+    }
+    var I18N = {
+        tr: {
+            MATCH_CENTER: 'MAÇ MERKEZİ', ALL: 'TÜMÜ', LIVE: 'CANLI', MATCH_ENDED: 'MAÇ SONU', MATCH_BEFORE: 'MAÇ ÖNÜ',
+            NO_MATCHES: 'Bugün bu ligde maç yok', LOADING: 'Maçlar yükleniyor...',
+            SERVERS: 'SUNUCULAR', NOTIF_ON: 'AÇIK', NOTIF_OFF: 'KAPALI', NOTIF_DENIED: 'REDDEDİLDİ',
+            WATCH_LIVE: 'CANLI İZLE', UNMUTE: 'SESİ AÇ', CAST: 'CAST', AD_RUNNING: 'REKLAM OYNUYOR',
+            AD_WAIT: 'Reklamın bitmesini bekleyin.', BROADCAST_STARTING: 'YAYIN BAŞLIYOR...',
+            NEW: 'YENİ', EVENTS: 'OLAYLAR', GOALS: 'GOLLER', YELLOW_CARD: 'SARI KART',
+            RED_CARD: 'KIRMIZI KART', PENALTY: 'PENALTI', NO_EVENTS: 'Henüz olay yok'
+        },
+        en: {
+            MATCH_CENTER: 'MATCH CENTER', ALL: 'ALL', LIVE: 'LIVE', MATCH_ENDED: 'FULL TIME', MATCH_BEFORE: 'KICK-OFF',
+            NO_MATCHES: 'No matches today', LOADING: 'Loading matches...',
+            SERVERS: 'SERVERS', NOTIF_ON: 'ON', NOTIF_OFF: 'OFF', NOTIF_DENIED: 'DENIED',
+            WATCH_LIVE: 'WATCH LIVE', UNMUTE: 'UNMUTE', CAST: 'CAST', AD_RUNNING: 'AD PLAYING',
+            AD_WAIT: 'Please wait for the ad to finish.', BROADCAST_STARTING: 'BROADCAST STARTING...',
+            NEW: 'NEW', EVENTS: 'EVENTS', GOALS: 'GOALS', YELLOW_CARD: 'YELLOW CARD',
+            RED_CARD: 'RED CARD', PENALTY: 'PENALTY', NO_EVENTS: 'No events yet'
+        }
+    };
+    window._siteLang = detectDefaultLang();
+    function t(key) { return (I18N[window._siteLang] && I18N[window._siteLang][key]) || I18N.tr[key] || key; }
+    function applyI18n() {
+        // Dil toggle buton state'i
+        var btn = document.getElementById('langToggle');
+        if (btn) btn.textContent = window._siteLang.toUpperCase();
+        // Match center title
+        var mc = document.querySelector('.match-center-title');
+        if (mc) mc.textContent = t('MATCH_CENTER');
+        // league filter ilk buton TÜMÜ
+        var allBtn = document.querySelector('.league-filter-btn[data-league="all"]');
+        if (allBtn) allBtn.textContent = t('ALL');
+        // Sunucular
+        var sTitle = document.querySelector('.server-title');
+        if (sTitle) sTitle.textContent = t('SERVERS');
+        // NEW badges
+        document.querySelectorAll('.new-badge').forEach(function(b){ b.textContent = t('NEW'); });
+        // Unmute button
+        var um = document.getElementById('unmuteBtn');
+        if (um) um.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3z"/></svg><span>' + t('UNMUTE') + '</span>';
+    }
+    window.toggleLang = function() {
+        window._siteLang = (window._siteLang === 'tr') ? 'en' : 'tr';
+        try { localStorage.setItem('bb_lang', window._siteLang); } catch(e) {}
+        applyI18n();
+    };
+    function getAppStoreUrl(packageName) {
+        var ua = (navigator.userAgent || '').toLowerCase();
+        var isIOS = /iphone|ipad|ipod/.test(ua) || (navigator.platform && /^(iPhone|iPad|iPod)/.test(navigator.platform));
+        var isHuawei = /huawei|hms|honor/.test(ua);
+        var isXiaomi = /miui|xiaomi|redmi|poco/.test(ua);
+        if (isIOS) {
+            // iOS App Store deep link
+            return 'itms-apps://apps.apple.com/app/' + encodeURIComponent(packageName);
+        }
+        if (isHuawei) {
+            // Huawei AppGallery
+            return 'appmarket://details?id=' + packageName;
+        }
+        if (isXiaomi) {
+            // Xiaomi GetApps (ama Play Store da mevcut)
+            return 'mimarket://details?id=' + packageName;
+        }
+        // Varsayılan Android: market://details açar Play Store'u
+        return 'market://details?id=' + packageName;
+    }
+    
+    // Reklam bitince otomatik store redirect (user action olmadan çalışması için location.href)
+    function redirectToAppStore(ad) {
+        if (!ad) return;
+        var url = ad.url || '';
+        // Ad URL'den package name çıkar
+        var match = url.match(/[?&]id=([^&]+)/);
+        var pkg = match ? match[1] : '';
+        if (!pkg) {
+            // Fallback: direk URL'yi aç
+            try { window.open(url, '_blank'); } catch(e) {}
+            return;
+        }
+        var deepLink = getAppStoreUrl(pkg);
+        // Intent deep link dene, başarısız olursa browser'da Play Store URL'si
+        try {
+            var tempFrame = document.createElement('iframe');
+            tempFrame.style.display = 'none';
+            tempFrame.src = deepLink;
+            document.body.appendChild(tempFrame);
+            setTimeout(function() { tempFrame.remove(); }, 500);
+        } catch(e) {}
+        // 1.5sn sonra browser fallback (deep link uygulaması yoksa)
+        setTimeout(function() { window.open(url, '_blank'); }, 1500);
+    }
+
     // Pre-roll reklam: kanal başlamadan önce oyun reklamı, ATLAMA YOK, bitince yayın başlar
     function playPrerollAd(onComplete) {
         _prerollActive = true;
@@ -1033,7 +1141,7 @@
         var MAX_AD_DURATION = 60000; // 60sn güvenlik limiti (reklam hang durumunda)
         var done = false;
         
-        function finish() {
+        function finish(triggerRedirect) {
             if (done) return;
             // Farklı preroll başlatıldıysa eski finish'i çalıştırma
             if (mySession !== _prerollSessionId) { done = true; return; }
@@ -1047,34 +1155,38 @@
             video.onended = null;
             video.onerror = null;
             _prerollActive = false;
+            // Reklam sonuna kadar oynadıysa auto-redirect (user action flag user click = aslında natural end)
+            if (triggerRedirect === true) {
+                redirectToAppStore(ad);
+            }
             if (onComplete) onComplete();
         }
         
-        // Reklam bitince (video.onended) otomatik yayına geç
-        video.onended = finish;
+        // Reklam bitince (video.onended) otomatik store'a yönlendir + yayına geç
+        video.onended = function() { finish(true); };
         
-        // Güvenlik: video yüklenmezse veya çok uzunsa zaman sonra geç
-        _prerollMaxTimer = setTimeout(finish, MAX_AD_DURATION);
+        // Güvenlik: video yüklenmezse veya çok uzunsa zaman sonra geç (redirect YOK - ortada kesilmiş)
+        _prerollMaxTimer = setTimeout(function() { finish(false); }, MAX_AD_DURATION);
     }
 
     function setupStream(skipPreroll) {
         const channel = CHANNELS[currentChannel];
         if (!channel || channel.status === 'maintenance') { showMaintenance(); return; }
 
-        // Önceki preroll aktifse iptal et (user yeni kanala geçti)
-        if (_prerollActive) {
-            _prerollSessionId++;
-            _prerollActive = false;
-            if (_prerollMaxTimer) { clearTimeout(_prerollMaxTimer); _prerollMaxTimer = null; }
-            var _pInfo0 = document.getElementById('prerollInfo');
-            if (_pInfo0) _pInfo0.remove();
-            var _pClick0 = document.getElementById('prerollClickLayer');
-            if (_pClick0) _pClick0.remove();
-            hideAdOverlay();
+        // Preroll aktifse kanal değişimini ENGELLE - reklam bitene kadar beklemelisin
+        if (_prerollActive && !skipPreroll) {
+            showInAppNotification('REKLAM OYNUYOR', 'Reklamın bitmesini bekleyin, sonra kanal değişir.', 'info');
+            return;
         }
 
-        // PRE-ROLL REKLAMI: SADECE gerçek yayınlarda (TRT, beIN vb.). Trailerlerde (demo*) yok.
-        var isBroadcast = !channel.isAd && !channel.isLocalVideo && !channel.isTrailer;
+        // Eski YouTube iframe varsa kaldır
+        var oldIframe = document.getElementById('ytIframe');
+        if (oldIframe) oldIframe.remove();
+        // Altyazı track'lerini temizle (kanal değişimi takılı altyazı fix)
+        video.querySelectorAll('track').forEach(function(t) { t.remove(); });
+
+        // PRE-ROLL REKLAMI: SADECE gerçek yayınlarda (TRT, beIN vb.). Trailerlerde yok.
+        var isBroadcast = !channel.isAd && !channel.isLocalVideo && !channel.isTrailer && !channel.isYoutube;
         if (!skipPreroll && isBroadcast && !_prerollDoneThisSession[currentChannel]) {
             _prerollDoneThisSession[currentChannel] = true;
             playPrerollAd(function() { setupStream(true); });
@@ -1106,6 +1218,34 @@
         retryCount = 0;
         streamSessionId++; // Eski callback'leri geçersiz kıl
         const mySession = streamSessionId;
+
+        // YOUTUBE IFRAME branch (Fast X, Spider-Man trailer)
+        if (channel.isYoutube && channel.youtubeId) {
+            clearTimeout(loadTimeout);
+            video.style.display = 'none';
+            loadingOverlay.classList.add('hidden');
+            var iframe = document.createElement('iframe');
+            iframe.id = 'ytIframe';
+            iframe.setAttribute('data-testid', 'yt-iframe');
+            iframe.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;border:0;z-index:5;';
+            // Altyazı: Türkçe otomatik çeviri (cc_lang_pref=tr), açık (cc_load_policy=1)
+            var ytLang = window._siteLang || 'tr';
+            var ytUrl = 'https://www.youtube.com/embed/' + channel.youtubeId +
+                '?autoplay=1&mute=1&controls=1&rel=0&modestbranding=1&playsinline=1' +
+                '&cc_load_policy=1&cc_lang_pref=' + ytLang + '&hl=' + ytLang;
+            iframe.src = ytUrl;
+            iframe.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+            iframe.allowFullscreen = true;
+            document.querySelector('.video-wrapper').appendChild(iframe);
+            statusText.textContent = 'TRAİLER';
+            statusBadge.className = 'live-badge';
+            isPlaying = true;
+            _tryNextCycle = 0;
+            return;
+        }
+
+        // Video görünür yap (YT iframe'den dönülünce)
+        video.style.display = '';
 
         // Loading timeout - 15s sonra hala yüklenemezse hata göster
         const loadTimeout = setTimeout(() => {
@@ -1470,30 +1610,51 @@
     }
 
     function startCast() {
-        // Android: Cast/Bluetooth ayarlarına yönlendir
-        if (/android/i.test(navigator.userAgent)) {
-            if (video.remote && typeof video.remote.prompt === 'function') {
-                video.remote.prompt().catch(function() {});
-                return;
-            }
-            try { window.open('intent:#Intent;action=android.settings.CAST_SETTINGS;end', '_blank'); } catch(e) {
-                try { window.open('intent:#Intent;action=android.settings.BLUETOOTH_SETTINGS;end', '_blank'); } catch(e2) {}
-            }
-            return;
-        }
-        // iOS/Mac
-        if (video.webkitShowPlaybackTargetPicker) {
-            video.webkitShowPlaybackTargetPicker();
-            return;
-        }
-        // Presentation API
-        if (navigator.presentation && navigator.presentation.defaultRequest) {
-            navigator.presentation.defaultRequest.start().catch(function() {});
-            return;
-        }
-        // Remote Playback API
+        var tried = false;
+        // 1. Remote Playback API (Cast/AirPlay/DIAL cihazlarını bulur)
         if (video.remote && typeof video.remote.prompt === 'function') {
-            video.remote.prompt().catch(function() {});
+            tried = true;
+            video.remote.prompt().catch(function() {
+                // 2. Fallback: Presentation API
+                if (navigator.presentation && navigator.presentation.defaultRequest) {
+                    try { navigator.presentation.defaultRequest.start().catch(function(){}); } catch(e) {}
+                }
+            });
+            return;
+        }
+        // 3. iOS/Safari webkit
+        if (video.webkitShowPlaybackTargetPicker) {
+            tried = true;
+            try { video.webkitShowPlaybackTargetPicker(); } catch(e) {}
+            return;
+        }
+        // 4. Chrome Cast API (eğer global cast framework yüklendiyse)
+        if (window.cast && window.cast.framework) {
+            try {
+                var ctx = window.cast.framework.CastContext.getInstance();
+                ctx.requestSession();
+                tried = true;
+                return;
+            } catch(e) {}
+        }
+        // 5. Presentation API
+        if (navigator.presentation && navigator.presentation.defaultRequest) {
+            try {
+                navigator.presentation.defaultRequest.start().catch(function(){});
+                tried = true;
+                return;
+            } catch(e) {}
+        }
+        // 6. Android intent fallback (Cast ayarlarına yönlendir)
+        if (/android/i.test(navigator.userAgent)) {
+            try {
+                window.location.href = 'intent:#Intent;action=android.settings.CAST_SETTINGS;end';
+                tried = true;
+            } catch(e) {}
+            return;
+        }
+        if (!tried) {
+            showInAppNotification('CAST KULLANILAMIYOR', 'Bu tarayıcı ya da cihaz yansıtma desteklemiyor. Chrome/Edge deneyin.', 'info');
         }
     }
 
@@ -1873,7 +2034,10 @@
                     for (var ti = 0; ti < tmrStages.length; ti++) {
                         var ts = tmrStages[ti], tcn = (ts.Cnm||'').toLowerCase(), tsn = (ts.Snm||'').toLowerCase();
                         var isTR = tcn.includes('turk') || tcn.includes('türk');
+                        // SADECE Süper Lig veya Türkiye Kupası - TFF 1/2. Lig hariç
                         if (!isTR) continue;
+                        var isMainTR = tsn.includes('süper') || tsn.includes('super lig') || tsn.includes('cup') || tsn.includes('kupa');
+                        if (!isMainTR) continue;
                         for (var tj = 0; tj < (ts.Events||[]).length; tj++) {
                             var te = ts.Events[tj];
                             var tt1 = ((te.T1||[{}])[0].Nm||''), tt2 = ((te.T2||[{}])[0].Nm||'');
@@ -1917,14 +2081,14 @@
             window._renderedMatchKeys[m.home + '-' + m.away] = true;
         });
         
-        grid.innerHTML = filtered.map(m => {
+        grid.innerHTML = filtered.map((m, idx) => {
             const isLive = m.status.includes("'") || m.status === 'CANLI' || m.status === 'DEVRE ARASI' || m.status === '1. YARI' || m.status === '2. YARI';
             let score = m.scoreH !== null && m.scoreH !== undefined ? (m.scoreH + ' - ' + m.scoreA) : 'vs';
             // Penaltı skorları (p 3-1) parantez içinde ekle
             if (m.pen1 !== undefined && m.pen1 !== null && m.pen2 !== undefined && m.pen2 !== null) {
                 score += ' <span class="pen-score">(p ' + m.pen1 + '-' + m.pen2 + ')</span>';
             }
-            return '<div class="match-card" data-testid="match-card">' +
+            return '<div class="match-card" data-testid="match-card" data-match-idx="' + idx + '" onclick="window.openMatchDetail(' + idx + ')">' +
                 '<div class="match-card-league">' + m.league + '</div>' +
                 '<div class="match-card-teams">' +
                     '<div class="match-card-team">' + m.home + '</div>' +
@@ -1934,6 +2098,155 @@
                 '<div class="match-card-status' + (isLive ? ' live' : '') + '">' + m.status + '</div>' +
             '</div>';
         }).join('');
+        // filtered listesini window'a bağla
+        window._currentMatchList = filtered;
+    }
+    
+    // ============================================
+    // MAÇKOLİK TARZI MAÇ DETAY MODAL
+    // ============================================
+    window.openMatchDetail = function(idx) {
+        var m = (window._currentMatchList || [])[idx];
+        if (!m) return;
+        var container = document.getElementById('matchDetailContainer');
+        if (!container) return;
+        var score = m.scoreH !== null && m.scoreH !== undefined ? (m.scoreH + ' - ' + m.scoreA) : 'vs';
+        var penStr = '';
+        if (m.pen1 !== undefined && m.pen1 !== null && m.pen2 !== undefined && m.pen2 !== null) {
+            penStr = '<div style="font-size:14px;color:var(--orange);margin-top:6px;letter-spacing:2px;">PENALTILAR: ' + m.pen1 + ' - ' + m.pen2 + '</div>';
+        }
+        var html = '<div class="match-detail-overlay" onclick="if(event.target===this)window.closeMatchDetail()">' +
+            '<div class="match-detail-modal">' +
+                '<div class="match-detail-header">' +
+                    '<div class="match-detail-league">' + (m.league || '').toUpperCase() + '</div>' +
+                    '<button class="match-detail-close" onclick="window.closeMatchDetail()" data-testid="match-detail-close">✕</button>' +
+                '</div>' +
+                '<div class="match-detail-scoreboard">' +
+                    '<div class="md-teams">' +
+                        '<div class="md-team-name left">' + m.home + '</div>' +
+                        '<div class="md-score">' + score + '</div>' +
+                        '<div class="md-team-name right">' + m.away + '</div>' +
+                    '</div>' +
+                    penStr +
+                    '<div class="md-status">' + m.status + '</div>' +
+                '</div>' +
+                '<div id="mdStatsGrid" class="md-stats-grid"></div>' +
+                '<div id="mdEvents" class="md-events">' +
+                    '<div class="md-loading">Detay veriler yükleniyor...</div>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+        container.innerHTML = html;
+        // ESC ile kapat
+        document.addEventListener('keydown', _mdEsc);
+        // Detayları backend'den çek
+        loadMatchDetail(m);
+    };
+    
+    window.closeMatchDetail = function() {
+        var c = document.getElementById('matchDetailContainer');
+        if (c) c.innerHTML = '';
+        document.removeEventListener('keydown', _mdEsc);
+    };
+    
+    function _mdEsc(e) { if (e.key === 'Escape') window.closeMatchDetail(); }
+    
+    async function loadMatchDetail(m) {
+        try {
+            // Eventi bul (takım isimlerine göre)
+            var resp = await fetch((BACKEND_URL || '') + '/api/livescore/today');
+            if (!resp.ok) return renderDetailFallback(m);
+            var data = await resp.json();
+            var stages = data.Stages || [];
+            var found = null;
+            for (var i = 0; i < stages.length && !found; i++) {
+                var evs = stages[i].Events || [];
+                for (var j = 0; j < evs.length; j++) {
+                    var t1 = ((evs[j].T1||[{}])[0].Nm||'');
+                    var t2 = ((evs[j].T2||[{}])[0].Nm||'');
+                    if ((t1 === m.home && t2 === m.away) || (t1.includes(m.home) && t2.includes(m.away))) {
+                        found = evs[j];
+                        break;
+                    }
+                }
+            }
+            if (!found) return renderDetailFallback(m);
+            
+            // İstatistikleri + olaylar render et
+            renderMatchStats(found, m);
+            renderMatchEvents(found, m);
+        } catch(e) {
+            renderDetailFallback(m);
+        }
+    }
+    
+    function renderMatchStats(ev, m) {
+        var grid = document.getElementById('mdStatsGrid');
+        if (!grid) return;
+        // LiveScore event icmal (gol/kart sayıları incidents'ten)
+        var incs = ev.Incs || [];
+        var stats = { goals1: 0, goals2: 0, yc1: 0, yc2: 0, rc1: 0, rc2: 0, pen1: 0, pen2: 0 };
+        incs.forEach(function(inc) {
+            var side = (inc.Nm === '2' || inc.T === 2) ? 2 : 1;
+            var it = inc.IT;
+            if (it === 4 || it === 'G') stats['goals' + side]++;
+            else if (it === 6 || it === 'YC') stats['yc' + side]++;
+            else if (it === 7 || it === 'RC') stats['rc' + side]++;
+            else if (it === 9 || it === 'P') stats['pen' + side]++;
+        });
+        var rows = [
+            { label: 'GOLLER', v1: stats.goals1, v2: stats.goals2, icon: '⚽' },
+            { label: 'SARI KART', v1: stats.yc1, v2: stats.yc2, icon: '🟨' },
+            { label: 'KIRMIZI KART', v1: stats.rc1, v2: stats.rc2, icon: '🟥' },
+            { label: 'PENALTI', v1: stats.pen1, v2: stats.pen2, icon: '⚡' }
+        ];
+        grid.innerHTML = rows.map(function(r) {
+            return '<div class="md-stat-card">' +
+                '<div class="md-stat-icon">' + r.icon + '</div>' +
+                '<div class="md-stat-body">' +
+                    '<div class="md-stat-label">' + r.label + '</div>' +
+                    '<div class="md-stat-value">' + r.v1 + ' - ' + r.v2 + '</div>' +
+                '</div>' +
+            '</div>';
+        }).join('');
+    }
+    
+    function renderMatchEvents(ev, m) {
+        var wrap = document.getElementById('mdEvents');
+        if (!wrap) return;
+        var incs = ev.Incs || [];
+        if (!incs.length) {
+            wrap.innerHTML = '<div class="md-events-title">OLAYLAR</div><div class="md-loading">Henüz olay yok</div>';
+            return;
+        }
+        // Zaman sırasına göre sırala (dakikaya göre)
+        incs.sort(function(a, b) { return (parseInt(a.Min||a.Mn||0)) - (parseInt(b.Min||b.Mn||0)); });
+        var html = '<div class="md-events-title">OLAYLAR</div>';
+        incs.forEach(function(inc) {
+            var it = inc.IT;
+            var type = 'info', icon = '•', label = '';
+            if (it === 4 || it === 'G') { type = 'goal'; icon = '⚽'; label = 'GOL'; }
+            else if (it === 6 || it === 'YC') { type = 'yellowcard'; icon = '🟨'; label = 'SARI KART'; }
+            else if (it === 7 || it === 'RC') { type = 'redcard'; icon = '🟥'; label = 'KIRMIZI KART'; }
+            else if (it === 9 || it === 'P') { type = 'penalty'; icon = '⚡'; label = 'PENALTI'; }
+            else { label = 'OLAY'; }
+            var side = (inc.Nm === '2' || inc.T === 2) ? 2 : 1;
+            var teamName = side === 1 ? m.home : m.away;
+            var player = inc.P1 || inc.Player || 'Oyuncu';
+            var min = (inc.Min || inc.Mn || 0) + "'";
+            html += '<div class="md-event-row ' + type + '">' +
+                '<div class="md-event-minute">' + min + '</div>' +
+                '<div class="md-event-icon">' + icon + '</div>' +
+                '<div class="md-event-desc">' + label + ': <strong>' + player + '</strong></div>' +
+                '<div class="md-event-team">' + teamName + '</div>' +
+            '</div>';
+        });
+        wrap.innerHTML = html;
+    }
+    
+    function renderDetailFallback(m) {
+        var wrap = document.getElementById('mdEvents');
+        if (wrap) wrap.innerHTML = '<div class="md-events-title">OLAYLAR</div><div class="md-loading">Bu maç için detay veri bulunamadı. Maç henüz başlamadıysa olaylar canlı yayın sırasında burada görünecek.</div>';
     }
 
     // ============================================
@@ -1957,6 +2270,9 @@
         video.addEventListener('play', syncPlayIcon);
         video.addEventListener('pause', syncPlayIcon);
         video.addEventListener('playing', syncPlayIcon);
+        
+        // i18n default uygula
+        applyI18n();
         
         initChannelTabs();
         setupStream();
