@@ -291,20 +291,21 @@
     
     function checkMatchEvents(stages) {
         if (!notificationsEnabled) return;
-        var turkTeams = ['galatasaray','fenerbah','besiktas','beşiktaş','trabzonspor','kocaelispor','samsunspor','antalyaspor','alanyaspor','kayserispor','kasımpaşa','sivasspor','istanbul','göztepe','eyüp','adana','karagümrük','gençlerbirliği','başakşehir','hatayspor'];
+        
+        // Sadece MAÇ MERKEZİNDE gösterilen maçlar için bildirim gönder
+        var renderedKeys = window._renderedMatchKeys || {};
         
         for (var i = 0; i < stages.length; i++) {
             var stg = stages[i], cn = (stg.Cnm||'').toLowerCase(), sn = (stg.Snm||'').toLowerCase();
-            var isTurkLeague = cn.includes('turk') || cn.includes('türk') || sn.includes('süper lig') || sn.includes('super lig') || sn.includes('1. lig');
             var evts = stg.Events || [];
             for (var j = 0; j < evts.length; j++) {
                 var ev = evts[j];
                 var t1 = ((ev.T1||[{}])[0].Nm||''), t2 = ((ev.T2||[{}])[0].Nm||'');
-                var isTurk = isTurkLeague || turkTeams.some(function(t){ return t1.toLowerCase().includes(t)||t2.toLowerCase().includes(t); });
-                
-                if (!isTurk) continue;
-                
                 var key = t1 + '-' + t2;
+                
+                // SADECE maç merkezinde render edilen maçlar için bildirim (kullanıcı isteği)
+                if (!renderedKeys[key]) continue;
+                
                 var eps = ev.Eps || 'NS';
                 var isLive = eps.includes("'") || eps === '1H' || eps === '2H' || eps === 'HT';
                 
@@ -324,15 +325,24 @@
                     var preKey = key + '-pre';
                     if (diff > 0 && diff <= 30 && !lastMatchEvents[preKey]) {
                         lastMatchEvents[preKey] = true;
-                        sendMatchAlert('MAÇ YAKLAŞIYOR', t1 + ' vs ' + t2 + ' - ' + diff + ' dk sonra!', 'info');
+                        sendMatchAlert('MAÇ YAKLAŞIYOR', t1 + ' vs ' + t2 + ' - ' + diff + ' dakika sonra başlıyor!', 'info');
                     }
                 }
                 
-                if (!isLive) continue;
+                if (!isLive) {
+                    // Maç bitti bildirimi (önceden canlıydı)
+                    if ((eps === 'FT' || eps === 'AP' || eps === 'AET' || eps === 'Pen.') && prev && prev.status !== 'FT' && prev.status !== 'AP') {
+                        var penStr = '';
+                        if (ev.Trp1 !== undefined && ev.Trp2 !== undefined) penStr = ' (p ' + ev.Trp1 + '-' + ev.Trp2 + ')';
+                        sendMatchAlert('MAÇ BİTTİ', t1 + ' ' + s1 + ' - ' + s2 + penStr + ' ' + t2, 'fulltime');
+                        lastMatchEvents[key] = { goals: totalGoals, status: 'FT', s1: s1, s2: s2, incs: (prev.incs||0) };
+                    }
+                    continue;
+                }
                 
                 if (!prev) {
                     // Maç yeni başladı bildirimi
-                    lastMatchEvents[key] = { goals: totalGoals, status: eps, s1: s1, s2: s2 };
+                    lastMatchEvents[key] = { goals: totalGoals, status: eps, s1: s1, s2: s2, incs: (ev.Incs||[]).length };
                     sendMatchAlert('MAÇ BAŞLADI!', t1 + ' vs ' + t2, 'kickoff');
                     continue;
                 }
@@ -345,6 +355,27 @@
                     sendMatchAlert('GOL!', goalTeam + '! ' + t1 + ' ' + s1 + ' - ' + s2 + ' ' + t2 + ' (' + eps + ')', 'goal');
                 }
                 
+                // KIRMIZI/SARI KART/PENALTI (LiveScore Incs field'ı - IT=4:gol, 6:sarı, 7:kırmızı, 9:penaltı)
+                var incs = ev.Incs || [];
+                var prevIncsLen = prev.incs || 0;
+                if (incs.length > prevIncsLen) {
+                    for (var k = prevIncsLen; k < incs.length; k++) {
+                        var inc = incs[k];
+                        var it = inc.IT;
+                        var player = inc.P1 || '';
+                        var min = inc.Min || inc.Mn || '';
+                        // Hangi takım? (Nm1=home, Nm2=away convention'a göre veya IT'in içinde team info)
+                        var team = inc.Nm === '2' || inc.T === 2 ? t2 : t1;
+                        if (it === 6 || it === 'YC' || it === 'Y') {
+                            sendMatchAlert('SARI KART', (min?min+"' ":'') + team + ' - ' + (player||'Oyuncu') + ' sarı kart gördü', 'yellowcard');
+                        } else if (it === 7 || it === 'RC' || it === 'R') {
+                            sendMatchAlert('KIRMIZI KART!', (min?min+"' ":'') + team + ' - ' + (player||'Oyuncu') + ' kırmızı kart gördü!', 'redcard');
+                        } else if (it === 9 || it === 'PEN' || it === 'P') {
+                            sendMatchAlert('PENALTI!', (min?min+"' ":'') + team + ' lehine penaltı!', 'penalty');
+                        }
+                    }
+                }
+                
                 // DEVRE ARASI
                 if (eps === 'HT' && prev.status !== 'HT') {
                     sendMatchAlert('DEVRE ARASI', t1 + ' ' + s1 + ' - ' + s2 + ' ' + t2, 'halftime');
@@ -355,22 +386,7 @@
                     sendMatchAlert('2. YARI BAŞLADI', t1 + ' ' + s1 + ' - ' + s2 + ' ' + t2, 'kickoff');
                 }
                 
-                lastMatchEvents[key] = { goals: totalGoals, status: eps, s1: s1, s2: s2 };
-            }
-            
-            // MAÇ BİTTİ kontrolü
-            for (var j = 0; j < evts.length; j++) {
-                var ev = evts[j];
-                var t1 = ((ev.T1||[{}])[0].Nm||''), t2 = ((ev.T2||[{}])[0].Nm||'');
-                var isTurk2 = isTurkLeague || turkTeams.some(function(t){ return t1.toLowerCase().includes(t)||t2.toLowerCase().includes(t); });
-                if (!isTurk2) continue;
-                var key2 = t1 + '-' + t2;
-                var eps2 = ev.Eps || 'NS';
-                var prev2 = lastMatchEvents[key2];
-                if ((eps2 === 'FT' || eps2 === 'AP' || eps2 === 'AET' || eps2 === 'Pen.') && prev2 && prev2.status !== 'FT' && prev2.status !== 'AP') {
-                    sendMatchAlert('MAÇ BİTTİ', t1 + ' ' + (ev.Tr1||0) + ' - ' + (ev.Tr2||0) + ' ' + t2, 'fulltime');
-                    lastMatchEvents[key2] = { goals: (ev.Tr1||0) + (ev.Tr2||0), status: 'FT' };
-                }
+                lastMatchEvents[key] = { goals: totalGoals, status: eps, s1: s1, s2: s2, incs: incs.length };
             }
         }
     }
@@ -1894,6 +1910,12 @@
             grid.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:20px;grid-column:1/-1;">Bugün bu ligde maç yok</div>';
             return;
         }
+        
+        // Render edilen maç anahtarlarını tut (bildirim filtresi için)
+        window._renderedMatchKeys = {};
+        filtered.forEach(function(m) {
+            window._renderedMatchKeys[m.home + '-' + m.away] = true;
+        });
         
         grid.innerHTML = filtered.map(m => {
             const isLive = m.status.includes("'") || m.status === 'CANLI' || m.status === 'DEVRE ARASI' || m.status === '1. YARI' || m.status === '2. YARI';
