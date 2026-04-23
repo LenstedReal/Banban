@@ -39,25 +39,30 @@
     }
 
     const STREAMS = {
-        // TRAILER yayınları (gerçek film trailer'ları - HLS)
-        sintel: 'https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8',
+        // TRAILER yayınları - W3.org güvenilir kaynaklar
+        sintel_mp4: 'https://media.w3.org/2010/05/sintel/trailer.mp4',
+        big_buck_bunny_mp4: 'https://media.w3.org/2010/05/bunny/trailer.mp4',
+        // Tears of Steel HLS (unified-streaming)
         tears_of_steel: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
-        big_buck_bunny: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+        // Mux HLS fallback
+        mux_test: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+        // MP4 yedekler
+        sintel_mp4_alt: 'https://download.blender.org/durian/trailer/sintel_trailer-480p.mp4',
+        bbb_mp4_alt: 'https://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_320x180.mp4',
         trt1: 'https://tv-trt1.medya.trt.com.tr/master.m3u8',
         trthaber: 'https://tv-trthaber.medya.trt.com.tr/master.m3u8',
         trtspor: 'https://tv-trtspor1.medya.trt.com.tr/master.m3u8',
         tv8: 'https://tv8.daioncdn.net/tv8/tv8.m3u8?app=7ddc255a-ef47-4e81-ab14-c0e5f2949788&ce=3',
-        // EU Akamai canlı test yayını (Kopenhag CDN) - Sunucu 3 için gerçek EU yedek
         akamai_eu: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
         bein1_video: BEIN1_VIDEO,
         bein1: (BACKEND_URL || '') + '/api/bein/master.m3u8?video=' + encodeURIComponent(BEIN1_VIDEO) + '&audio=' + encodeURIComponent(BEIN1_AUDIO)
     };
 
-    // Sunucu yedekleri - Sunucu 1 = Sunucu 2 (aynı primary), Sunucu 3 = EU Akamai farklı
+    // Sunucu yedekleri - Sunucu 1 primary, Sunucu 2 aynı/benzer, Sunucu 3 tamamen farklı yedek
     const SERVER_ALTERNATIVES = {
-        demo1: [STREAMS.sintel, STREAMS.sintel, STREAMS.akamai_eu],
-        demo2: [STREAMS.tears_of_steel, STREAMS.tears_of_steel, STREAMS.akamai_eu],
-        demo3: [STREAMS.big_buck_bunny, STREAMS.big_buck_bunny, STREAMS.akamai_eu],
+        demo1: [STREAMS.sintel_mp4, STREAMS.sintel_mp4, STREAMS.sintel_mp4_alt],
+        demo2: [STREAMS.tears_of_steel, STREAMS.tears_of_steel, STREAMS.mux_test],
+        demo3: [STREAMS.big_buck_bunny_mp4, STREAMS.big_buck_bunny_mp4, STREAMS.bbb_mp4_alt],
         trt1: [STREAMS.trt1, STREAMS.trt1, STREAMS.akamai_eu],
         trthaber: [STREAMS.trthaber, STREAMS.trthaber, STREAMS.akamai_eu],
         trtspor: [STREAMS.trtspor, STREAMS.trtspor, STREAMS.akamai_eu],
@@ -81,9 +86,9 @@
     function nextAd(){var ads=getAds();var i=parseInt(sessionStorage.getItem('bb_adi')||'0')+1;if(i>=ads.length)i=0;sessionStorage.setItem('bb_adi',String(i));}
 
     const CHANNELS = {
-        demo1: { name: 'SİNTEL TRAILER', status: 'online', stream: STREAMS.sintel, isTrailer: true },
+        demo1: { name: 'SİNTEL TRAILER', status: 'online', stream: STREAMS.sintel_mp4, isTrailer: true, isMp4: true },
         demo2: { name: 'TEARS OF STEEL TRAILER', status: 'online', stream: STREAMS.tears_of_steel, subtitles: 'tears-of-steel-tr.vtt', subLabel: 'Türkçe', subLang: 'tr', isTrailer: true },
-        demo3: { name: 'BIG BUCK BUNNY TRAILER', status: 'online', stream: STREAMS.big_buck_bunny, subtitles: 'big-buck-bunny-en.vtt', subLabel: 'English', subLang: 'en', isTrailer: true },
+        demo3: { name: 'BIG BUCK BUNNY TRAILER', status: 'online', stream: STREAMS.big_buck_bunny_mp4, subtitles: 'big-buck-bunny-en.vtt', subLabel: 'English', subLang: 'en', isTrailer: true, isMp4: true },
         trt1: { name: 'TRT 1', status: 'online', stream: STREAMS.trt1 },
         trthaber: { name: 'TRT HABER', status: 'online', stream: STREAMS.trthaber },
         tv8: { name: 'TV 8', status: 'online', stream: STREAMS.tv8 },
@@ -313,7 +318,7 @@
                 var key2 = t1 + '-' + t2;
                 var eps2 = ev.Eps || 'NS';
                 var prev2 = lastMatchEvents[key2];
-                if (eps2 === 'FT' && prev2 && prev2.status !== 'FT') {
+                if ((eps2 === 'FT' || eps2 === 'AP' || eps2 === 'AET' || eps2 === 'Pen.') && prev2 && prev2.status !== 'FT' && prev2.status !== 'AP') {
                     sendMatchAlert('MAÇ BİTTİ', t1 + ' ' + (ev.Tr1||0) + ' - ' + (ev.Tr2||0) + ' ' + t2, 'fulltime');
                     lastMatchEvents[key2] = { goals: (ev.Tr1||0) + (ev.Tr2||0), status: 'FT' };
                 }
@@ -530,7 +535,7 @@
                         var isBigClub = bigClubs.some(function(t){return t1.toLowerCase().includes(t)||t2.toLowerCase().includes(t);});
                         var eps = ev.Eps||'NS', p = 0, st = 'BAŞLAMADI';
                         var isLive = false;
-                        if (eps.includes("'")||eps==='1H'||eps==='2H') {p=3;st=eps;isLive=true;} else if (eps==='HT') {p=3;st='DEVRE ARASI';isLive=true;} else if (eps==='FT') {p=1;st='MAÇ SONU';} else if (eps==='NS') {p=2;var mt=ev.Esd?String(ev.Esd).substring(8,10)+':'+String(ev.Esd).substring(10,12):'';if(mt){var h=parseInt(mt.substring(0,2))+6;if(h>=24)h-=24;st='MAÇ ÖNÜ - '+String(h).padStart(2,'0')+':'+mt.substring(3);}} else {p=2;st=eps;}
+                        if (eps.includes("'")||eps==='1H'||eps==='2H') {p=3;st=eps;isLive=true;} else if (eps==='HT') {p=3;st='DEVRE ARASI';isLive=true;} else if (eps==='FT'||eps==='AP'||eps==='AET'||eps==='Pen.') {p=1;st='MAÇ SONU';} else if (eps==='NS') {p=2;var mt=ev.Esd?String(ev.Esd).substring(8,10)+':'+String(ev.Esd).substring(10,12):'';if(mt){var h=parseInt(mt.substring(0,2))+6;if(h>=24)h-=24;st='MAÇ ÖNÜ - '+String(h).padStart(2,'0')+':'+mt.substring(3);}} else if (eps==='ET'||eps==='EP') {p=3;st='UZATMA';isLive=true;} else {p=2;st=eps;}
                         var sc = p*100 + (ev.Tr1||0) + (ev.Tr2||0);
                         var obj = {team1:t1||'---',team2:t2||'---',score1:ev.Tr1||0,score2:ev.Tr2||0,league:sn+(cn?' ('+cn+')':''),status:st,isLive:isLive};
                         
@@ -662,7 +667,7 @@
         document.getElementById('teamsContainer').style.opacity = '1';
         matchMinute.style.opacity = '1';
         
-        if (status === 'MAÇ SONU' || status === 'FT') {
+        if (status === 'MAÇ SONU' || status === 'FT' || status === 'AP' || status === 'AET' || status === 'Pen.') {
             matchMinute.textContent = 'MAÇ SONU';
             matchMinute.className = 'match-minute ended';
             statusText.textContent = 'CANLI';
@@ -1090,6 +1095,40 @@
         video.loop = false;
         video.removeAttribute('src');
 
+        // MP4 direkt oynatma (HLS.js atlat) - Blender trailer'ları gibi native MP4
+        var isMp4Url = channel.isMp4 || /\.(mp4|m4v|mov|webm)(\?|$)/i.test(streamUrl);
+        if (isMp4Url) {
+            clearTimeout(loadTimeout);
+            loadingOverlay.classList.add('hidden');
+            video.loop = true; // Trailer'lar loop
+            video.muted = isMuted;
+            video.style.filter = 'none';
+            video.src = streamUrl;
+            var loadErr = false;
+            video.addEventListener('loadedmetadata', function onMeta() {
+                video.removeEventListener('loadedmetadata', onMeta);
+                if (mySession !== streamSessionId) return;
+                _tryNextCycle = 0; // Başarılı yüklendi, sayaç sıfırla
+                loadingOverlay.classList.add('hidden');
+                statusText.textContent = 'CANLI';
+                statusBadge.className = 'live-badge';
+                video.play().catch(function(){});
+                isPlaying = true;
+                retryCount = 0;
+                unmuteBtn.classList.toggle('hidden', !isMuted);
+                updateSubtitles();
+                updateConnectionIcon();
+                updateQualityMenu([]);
+            }, { once: true });
+            video.addEventListener('error', function onErr() {
+                video.removeEventListener('error', onErr);
+                if (mySession !== streamSessionId) return;
+                if (!loadErr) { loadErr = true; tryNextServer(); }
+            }, { once: true });
+            video.load();
+            return;
+        }
+
         if (Hls.isSupported()) {
             hls = new Hls({
                 enableWorker: true, lowLatencyMode: true,
@@ -1105,6 +1144,7 @@
 
             hls.on(Hls.Events.MANIFEST_PARSED, (e, data) => {
                 if (mySession !== streamSessionId) return; // Kanal değişti, eski callback'i yoksay
+                _tryNextCycle = 0; // Başarılı yüklendi, sayaç sıfırla
                 clearTimeout(loadTimeout);
                 loadingOverlay.classList.add('hidden');
                 statusText.textContent = 'CANLI';
@@ -1165,22 +1205,30 @@
         }
     }
 
+    var _tryNextInProgress = false;
+    var _tryNextCycle = 0;
     function tryNextServer() {
+        if (_tryNextInProgress) return; // Eşzamanlı çağrı engeli
+        _tryNextInProgress = true;
+        setTimeout(function() { _tryNextInProgress = false; }, 500);
+        
         const servers = SERVER_ALTERNATIVES[currentChannel] || [];
+        _tryNextCycle++;
+        // Sonsuz döngü önlemi: tüm server'lar denenip başarısız olursa hata göster
+        if (_tryNextCycle > servers.length * 2) {
+            _tryNextCycle = 0;
+            showStreamError();
+            return;
+        }
         if (currentServerIndex < servers.length - 1) {
             currentServerIndex++;
-            retryCount = 0;
-            updateServerUI();
-            if (hls) { try { hls.destroy(); } catch(e){} hls = null; }
-            setupStream(true);
         } else {
-            // Tüm sunucular denendi - ilk sunucuya dön ve tekrar dene
             currentServerIndex = 0;
-            retryCount = 0;
-            updateServerUI();
-            if (hls) { try { hls.destroy(); } catch(e){} hls = null; }
-            setupStream(true);
         }
+        retryCount = 0;
+        updateServerUI();
+        if (hls) { try { hls.destroy(); } catch(e){} hls = null; }
+        setupStream(true);
     }
 
     function updateServerUI() {
@@ -1670,7 +1718,7 @@
                         const eps = evt.Eps || 'NS';
                         
                         // Biten maçları 10dk sonra atla
-                        if (eps === 'FT' || eps === 'AP') {
+                        if (eps === 'FT' || eps === 'AP' || eps === 'AET' || eps === 'Pen.') {
                             var endTime = evt.Esd ? parseInt(String(evt.Esd).substring(8,10))*60 + parseInt(String(evt.Esd).substring(10,12)) + 6*60 + 105 : 0;
                             var nowMin = new Date().getHours() * 60 + new Date().getMinutes();
                             if (endTime > 0 && nowMin > endTime + 10) continue; // 10dk geçtiyse gösterme
@@ -1679,8 +1727,8 @@
                         let status = 'BAŞLAMADI';
                         if (eps === 'NS') status = 'BAŞLAMADI';
                         else if (eps === 'HT') status = 'DEVRE ARASI';
-                        else if (eps === 'FT') status = 'MAÇ SONU';
-                        else if (eps === 'AP') status = 'UZATMA SONU';
+                        else if (eps === 'FT' || eps === 'AP' || eps === 'AET' || eps === 'Pen.') status = 'MAÇ SONU';
+                        else if (eps === 'ET' || eps === 'EP') status = 'UZATMA';
                         else if (eps.includes("'")) status = eps;
                         else if (eps === 'Postp.') status = 'ERTELENDİ';
                         else status = eps;

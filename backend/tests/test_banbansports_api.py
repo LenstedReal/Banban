@@ -61,7 +61,8 @@ def test_channels(client):
     r = client.get(f"{BASE_URL}/api/channels")
     assert r.status_code == 200
     data = r.json()
-    for ch in ["demo1", "demo2", "trt1", "trthaber", "tv8", "trtspor", "reklam"]:
+    # NOTE: 'reklam' channel intentionally removed — preroll ads handled as overlay
+    for ch in ["demo1", "demo2", "demo3", "trt1", "trthaber", "tv8", "trtspor"]:
         assert ch in data, f"Missing channel {ch}"
         assert "name" in data[ch]
         assert "status" in data[ch]
