@@ -1158,25 +1158,35 @@
         video.style.filter = 'none';
         video.src = ad.vid + '.webm';
         video.onerror = function() { video.onerror = null; video.src = ad.vid + '.mp4'; };
-        video.play().catch(function(){});
+        var _adPlay = video.play();
+        if (_adPlay && _adPlay.catch) {
+            _adPlay.catch(function() {
+                // Autoplay engellendi - muted fallback, unmute butonu göster
+                video.muted = true;
+                isMuted = true;
+                video.play().catch(function(){});
+                if (unmuteBtn) unmuteBtn.classList.remove('hidden');
+            });
+        }
         isPlaying = true;
         unmuteBtn.classList.toggle('hidden', !isMuted);
         updateQualityMenu([]);
         
-        // REKLAM badge - TIKLANAMAZ (sadece bilgi), kullanıcı ekran bittikten sonra store'a yönlendirilir
+        // REKLAM badge - TIKLANABILIR (Play Store'a yönlendirir)
         hideAdOverlay();
         var ov = document.createElement('div');
         ov.id = 'adOverlay';
         ov.setAttribute('data-testid', 'preroll-overlay');
-        ov.style.cssText = 'position:absolute;top:15px;left:60px;z-index:20;padding:8px 16px;background:linear-gradient(135deg,'+ad.color+'ee,rgba(170,0,255,0.9));font-family:Orbitron,sans-serif;font-size:12px;font-weight:700;color:#fff;letter-spacing:2px;border:1px solid rgba(255,255,255,0.4);box-shadow:0 0 20px '+ad.color+'80;pointer-events:none;';
-        ov.textContent = 'REKLAM · ' + ad.name;
+        ov.style.cssText = 'position:absolute;top:15px;left:60px;z-index:22;padding:8px 16px;background:linear-gradient(135deg,'+ad.color+'ee,rgba(170,0,255,0.9));font-family:Orbitron,sans-serif;font-size:12px;font-weight:700;color:#fff;letter-spacing:2px;border:1px solid rgba(255,255,255,0.4);box-shadow:0 0 20px '+ad.color+'80;cursor:pointer;user-select:none;';
+        ov.textContent = 'REKLAM · ' + ad.name + ' · TIKLA';
+        ov.onclick = function(e) { e.stopPropagation(); redirectToAppStore(ad); };
         document.querySelector('.video-wrapper').appendChild(ov);
         
         // Yayın başlıyor göstergesi (ses butonunu kaplamasın - ÜST ORTA)
         var info = document.createElement('div');
         info.id = 'prerollInfo';
         info.setAttribute('data-testid', 'preroll-info');
-        info.style.cssText = 'position:absolute;top:18px;left:50%;transform:translateX(-50%);z-index:21;padding:8px 18px;background:rgba(0,0,0,0.8);color:var(--cyan);font-family:VT323,monospace;font-size:13px;border:1px solid var(--cyan);letter-spacing:2px;pointer-events:none;';
+        info.style.cssText = 'position:absolute;top:18px;left:50%;transform:translateX(-50%);z-index:22;padding:8px 18px;background:rgba(0,0,0,0.8);color:var(--cyan);font-family:VT323,monospace;font-size:13px;border:1px solid var(--cyan);letter-spacing:2px;pointer-events:none;';
         info.textContent = 'YAYIN BAŞLIYOR...';
         document.querySelector('.video-wrapper').appendChild(info);
         
@@ -1281,12 +1291,37 @@
                 '<div style="position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,rgba(255,0,170,0.04) 0 2px,transparent 2px 18px);pointer-events:none;"></div>' +
                 '<div style="font-family:Orbitron,sans-serif;font-size:13px;letter-spacing:4px;color:var(--pink);text-shadow:0 0 12px var(--pink);margin-bottom:16px;animation:pulse 2s infinite;">● ' + (channel.name) + '</div>' +
                 '<div style="font-family:Orbitron,sans-serif;font-size:clamp(28px,5vw,56px);font-weight:900;letter-spacing:6px;background:linear-gradient(90deg,var(--cyan),var(--pink),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-shadow:0 0 30px rgba(0,240,255,0.3);text-align:center;padding:0 20px;">' + (channel.comingText || 'FRAGMAN YAKINDA') + '</div>' +
-                '<div id="ragOktayInfo" style="margin-top:34px;display:flex;align-items:center;gap:14px;font-family:VT323,monospace;color:#e8d4b8;font-size:15px;letter-spacing:2px;background:rgba(0,0,0,0.5);padding:12px 22px;border:1px solid rgba(232,212,184,0.3);">' +
-                '<svg width="18" height="18" viewBox="0 0 24 24" fill="#e8d4b8" style="animation:pulse 1.5s infinite;"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>' +
+                '<div id="ragOktayInfo" style="margin-top:34px;display:flex;align-items:center;gap:14px;font-family:VT323,monospace;color:#e8d4b8;font-size:15px;letter-spacing:2px;background:rgba(0,0,0,0.5);padding:12px 22px;border:1px solid rgba(232,212,184,0.3);cursor:pointer;" title="Tıkla - müziği başlat/durdur">' +
+                '<svg id="ragOktayIcon" width="18" height="18" viewBox="0 0 24 24" fill="#e8d4b8" style="animation:pulse 1.5s infinite;"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>' +
                 '<span>♪ RAGGA OKTAY · <em style="color:var(--pink);">HASRETİM GİTME KAL</em></span>' +
                 '</div>' +
-                '<audio id="ragOktayAudio" style="display:none;" preload="none"></audio>';
+                '<audio id="ragOktayAudio" preload="auto" loop style="display:none;" src="/ragga_oktay.mp3"></audio>';
             document.querySelector('.video-wrapper').appendChild(csWrap);
+            // Şarkıyı oynatmayı dene (user gesture ile gelindiyse ses açık, değilse muted denemesi)
+            try {
+                var _rgAudio = csWrap.querySelector('#ragOktayAudio');
+                var _rgInfo = csWrap.querySelector('#ragOktayInfo');
+                if (_rgAudio) {
+                    _rgAudio.volume = 0.45;
+                    _rgAudio.muted = isMuted;
+                    var _rgTry = _rgAudio.play();
+                    if (_rgTry && _rgTry.catch) {
+                        _rgTry.catch(function(){
+                            // Autoplay engellendi - tıklamaya bağla
+                            _rgInfo.addEventListener('click', function _rgStart(){
+                                _rgAudio.muted = false;
+                                _rgAudio.play().catch(function(){});
+                                _rgInfo.removeEventListener('click', _rgStart);
+                            });
+                        });
+                    }
+                    // Info bandına tıklanınca pause/play
+                    _rgInfo.addEventListener('click', function(){
+                        if (_rgAudio.paused) { _rgAudio.muted = false; _rgAudio.play().catch(function(){}); }
+                        else { _rgAudio.pause(); }
+                    });
+                }
+            } catch(e) {}
             statusText.textContent = 'YAKINDA';
             statusBadge.className = 'live-badge';
             isPlaying = false;
@@ -2590,8 +2625,28 @@
             if (_sessionStarted) return;
             _sessionStarted = true;
             startOv.classList.add('hidden');
-            // Autoplay policy: kullanıcı tıklaması olduğu için SES AÇIK başlayabilir (user gesture)
-            try { video.muted = false; isMuted = false; if (unmuteBtn) unmuteBtn.classList.add('hidden'); } catch(err) {}
+            // Autoplay policy unlock: user gesture'la video'ya doğrudan dokun, audio context unlock et
+            try {
+                // 1. Video.muted=false set et (user gesture içinde)
+                video.muted = false;
+                isMuted = false;
+                if (unmuteBtn) unmuteBtn.classList.add('hidden');
+                // 2. Boş bir play().pause() ile audio unlock
+                var _unlock = video.play();
+                if (_unlock && _unlock.then) {
+                    _unlock.then(function(){ video.pause(); }).catch(function(){
+                        // Autoplay engellendi - muted kalabilir, unmute göster
+                        video.muted = true;
+                        isMuted = true;
+                        if (unmuteBtn) unmuteBtn.classList.remove('hidden');
+                    });
+                }
+                // 3. AudioContext unlock (şarkı için)
+                try {
+                    var _ac = new (window.AudioContext || window.webkitAudioContext)();
+                    if (_ac.state === 'suspended') _ac.resume();
+                } catch(err2){}
+            } catch(err) {}
             setupStream();
         }
         playBtn.addEventListener('click', startSession);
