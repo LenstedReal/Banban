@@ -431,25 +431,27 @@
         }
         .unmute-btn:hover { box-shadow: 0 0 30px var(--pink); transform: scale(1.05); }
 
-        /* Altyazı CC TR/EN seçici - unmute'ın yanında */
+        /* Altyazı seçici - SOL ALT KÖŞE (video-controls'un üstünde) */
         .cc-selector {
-            position: absolute; top: 20px; right: 160px;
+            position: absolute; bottom: 72px; left: 20px;
             display: flex; align-items: center; gap: 4px;
-            background: rgba(0, 0, 0, 0.75); border: 1px solid rgba(0, 240, 255, 0.4);
-            padding: 4px 6px; z-index: 30;
+            background: rgba(0, 0, 0, 0.85); border: 1px solid rgba(0, 240, 255, 0.4);
+            padding: 6px 8px; z-index: 30;
             font-family: 'Orbitron', sans-serif;
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
         }
-        .cc-label { font-size: 9px; color: #888; letter-spacing: 2px; padding: 0 8px 0 6px; pointer-events: none; text-transform: uppercase; }
+        .cc-label { font-size: 9px; color: #aaa; letter-spacing: 2px; padding: 0 8px 0 6px; pointer-events: none; text-transform: uppercase; }
         .cc-btn {
             background: transparent; border: 1px solid transparent; color: #ccc;
-            padding: 5px 10px; font-family: inherit; font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+            padding: 5px 11px; font-family: inherit; font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
             cursor: pointer; transition: all 0.2s;
         }
         .cc-btn:hover { border-color: var(--cyan); color: var(--cyan); }
         .cc-btn.active { background: rgba(0, 240, 255, 0.18); border-color: var(--cyan); color: var(--cyan); box-shadow: 0 0 8px rgba(0,240,255,0.4); }
         @media (max-width: 640px) {
-            .cc-selector { right: 20px; top: 70px; }
-            .cc-label { font-size: 9px; padding: 0 4px; }
+            .cc-selector { left: 12px; bottom: 68px; padding: 5px 6px; }
+            .cc-label { font-size: 8px; padding: 0 4px; }
             .cc-btn { padding: 4px 7px; font-size: 9px; }
         }
 
@@ -754,7 +756,7 @@
                 <div class="overlay start-overlay" id="startOverlay" data-testid="start-overlay">
                     <div class="shelby-scene">
                         <!-- Gerçek Thomas Shelby görseli (arka plan olarak) -->
-                        <div class="shelby-bg" style="background-image:url('/shelby.jpg'); background-size:cover; background-position:center; filter:brightness(0.92) contrast(1.15) saturate(1.05);"></div>
+                        <div class="shelby-bg" style="background-image:url('/shelby.jpg'); background-size:cover; background-position:center 18%; filter:brightness(0.92) contrast(1.15) saturate(1.05);"></div>
                         <!-- Karartma + renk overlay -->
                         <div class="shelby-overlay"></div>
                         <div class="shelby-grain"></div>
@@ -854,15 +856,49 @@
                     <span>SESİ AÇ</span>
                 </button>
 
-                <!-- Altyazı CC seçici - ses butonunun yanında, TÜM KANALLARDA görünür -->
+                <!-- Altyazı seçici - SOL ALT KÖŞE, 3 NET SEÇENEK -->
                 <div class="cc-selector" id="ccSelector" data-testid="cc-selector">
-                    <span class="cc-label">SUBTITLES</span>
-                    <button class="cc-btn" data-sub="tr" data-testid="cc-tr">TURKISH</button>
-                    <button class="cc-btn" data-sub="en" data-testid="cc-en">ENGLISH</button>
-                    <button class="cc-btn" data-sub="off" data-testid="cc-off">NO</button>
+                    <span class="cc-label">ALTYAZI</span>
+                    <button class="cc-btn" data-sub="tr" data-testid="cc-tr">Türkçe</button>
+                    <button class="cc-btn" data-sub="en" data-testid="cc-en">English</button>
+                    <button class="cc-btn" data-sub="off" data-testid="cc-off">Altyazısız</button>
                 </div>
             </div>
         </main>
+
+        <!-- RAGGA OKTAY MÜZİK BARI (video alanının DIŞINDA, ayrı bir alan) -->
+        <div id="raggaPlayer" data-testid="ragga-player" style="display:none;max-width:1200px;margin:18px auto 0;padding:0 16px;">
+            <div style="background:linear-gradient(90deg,rgba(16,8,24,0.95) 0%,rgba(28,12,38,0.95) 50%,rgba(16,8,24,0.95) 100%);border:1px solid rgba(255,0,170,0.35);box-shadow:0 4px 24px rgba(0,0,0,0.6),inset 0 0 40px rgba(255,0,170,0.08);padding:14px 22px;display:flex;align-items:center;gap:18px;font-family:VT323,monospace;color:#e8d4b8;position:relative;overflow:hidden;">
+                <div id="raggaPlayBtn" role="button" tabindex="0" aria-label="Oynat/Duraklat" style="flex-shrink:0;width:44px;height:44px;border:2px solid var(--pink);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;background:rgba(255,0,170,0.1);transition:all 0.25s;">
+                    <svg id="raggaPlayIcon" width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:11px;color:var(--cyan);letter-spacing:3px;opacity:0.7;">ŞİMDİ ÇALIYOR</div>
+                    <div style="font-size:19px;letter-spacing:1.5px;color:#fff;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                        <span style="color:var(--pink);">RAGGA OKTAY</span> <span style="opacity:0.6;">—</span> Hasretim Gitme Kal
+                    </div>
+                </div>
+                <div style="flex-shrink:0;display:flex;align-items:center;gap:8px;">
+                    <!-- Visualizer bars -->
+                    <div id="raggaBars" style="display:flex;align-items:flex-end;gap:3px;height:28px;">
+                        <span style="width:3px;background:linear-gradient(180deg,var(--cyan),var(--pink));animation:ragBar 0.8s ease-in-out infinite;height:70%;"></span>
+                        <span style="width:3px;background:linear-gradient(180deg,var(--cyan),var(--pink));animation:ragBar 0.6s ease-in-out infinite 0.1s;height:45%;"></span>
+                        <span style="width:3px;background:linear-gradient(180deg,var(--cyan),var(--pink));animation:ragBar 0.9s ease-in-out infinite 0.25s;height:90%;"></span>
+                        <span style="width:3px;background:linear-gradient(180deg,var(--cyan),var(--pink));animation:ragBar 0.7s ease-in-out infinite 0.4s;height:60%;"></span>
+                        <span style="width:3px;background:linear-gradient(180deg,var(--cyan),var(--pink));animation:ragBar 0.5s ease-in-out infinite 0.5s;height:50%;"></span>
+                    </div>
+                    <button id="raggaVolBtn" data-testid="ragga-vol-btn" style="background:none;border:none;color:#e8d4b8;cursor:pointer;padding:4px;" aria-label="Ses">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+                    </button>
+                </div>
+                <audio id="ragOktayAudio" preload="auto" loop src="/ragga_oktay.mp3" style="display:none;"></audio>
+            </div>
+        </div>
+
+        <style>
+            @keyframes ragBar { 0%,100%{transform:scaleY(0.4);} 50%{transform:scaleY(1);} }
+            #raggaPlayBtn:hover { background:rgba(255,0,170,0.25); box-shadow:0 0 16px rgba(255,0,170,0.5); }
+        </style>
 
         <!-- MAÇ MERKEZİ -->
         <div class="match-center" data-testid="match-center">

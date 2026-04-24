@@ -741,6 +741,55 @@
         if (mm) mm.style.opacity = '0';
     }
 
+    // === RAGGA OKTAY MÜZİK PLAYER (video alanından AYRI, sadece Hızlı Öfkeli 11 aktifken) ===
+    function showRaggaPlayer() {
+        var el = document.getElementById('raggaPlayer');
+        if (!el) return;
+        el.style.display = 'block';
+        var a = document.getElementById('ragOktayAudio');
+        var btn = document.getElementById('raggaPlayBtn');
+        var icon = document.getElementById('raggaPlayIcon');
+        var bars = document.getElementById('raggaBars');
+        if (!a) return;
+        a.volume = 0.5;
+        a.muted = false;
+        function _syncIcon() {
+            if (a.paused) {
+                icon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+                if (bars) bars.style.opacity = '0.35';
+            } else {
+                icon.innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
+                if (bars) bars.style.opacity = '1';
+            }
+        }
+        a.addEventListener('play', _syncIcon);
+        a.addEventListener('pause', _syncIcon);
+        // Oynatmayı dene
+        var p = a.play();
+        if (p && p.catch) {
+            p.catch(function(){
+                // autoplay engellendi - pause state sync
+                _syncIcon();
+            });
+        }
+        // Play/pause tıklaması
+        if (!btn._raggaBound) {
+            btn._raggaBound = true;
+            btn.addEventListener('click', function(){
+                if (a.paused) { a.muted = false; a.play().catch(function(){}); }
+                else { a.pause(); }
+            });
+        }
+        _syncIcon();
+    }
+    function hideRaggaPlayer() {
+        var el = document.getElementById('raggaPlayer');
+        if (!el) return;
+        el.style.display = 'none';
+        var a = document.getElementById('ragOktayAudio');
+        if (a) { try { a.pause(); a.currentTime = 0; } catch(e){} }
+    }
+
     function updateScoreboard(match) {
         document.getElementById('team1').textContent = match.team1 || '---';
         document.getElementById('team2').textContent = match.team2 || '---';
@@ -1017,6 +1066,7 @@
     var _prerollActive = false;
     var _prerollMaxTimer = null;
     var _prerollSessionId = 0;
+    var _adCountdownTimer = null;
 
     // ============================================
     // i18n - TR/EN (kullanıcı Türkiye dışındaysa İngilizce)
@@ -1197,17 +1247,41 @@
         unmuteBtn.classList.toggle('hidden', !isMuted);
         updateQualityMenu([]);
         
-        // REKLAM badge - TIKLANABILIR (Play Store'a yönlendirir)
+        // REKLAM badge - TIKLANABILIR + PROFESYONEL TASARIM
         hideAdOverlay();
         var ov = document.createElement('div');
         ov.id = 'adOverlay';
         ov.setAttribute('data-testid', 'preroll-overlay');
-        ov.style.cssText = 'position:absolute;top:15px;left:60px;z-index:22;padding:8px 16px;background:linear-gradient(135deg,'+ad.color+'ee,rgba(170,0,255,0.9));font-family:Orbitron,sans-serif;font-size:12px;font-weight:700;color:#fff;letter-spacing:2px;border:1px solid rgba(255,255,255,0.4);box-shadow:0 0 20px '+ad.color+'80;cursor:pointer;user-select:none;';
-        ov.textContent = 'REKLAM · ' + ad.name + ' · TIKLA';
+        ov.style.cssText = 'position:absolute;top:15px;left:60px;z-index:22;padding:9px 18px;' +
+            'background:linear-gradient(135deg,' + ad.color + 'ee 0%,rgba(170,0,255,0.92) 100%);' +
+            'font-family:Orbitron,sans-serif;font-size:11px;font-weight:800;color:#fff;letter-spacing:3px;' +
+            'border:1px solid rgba(255,255,255,0.45);box-shadow:0 4px 18px rgba(0,0,0,0.5),0 0 24px ' + ad.color + '80;' +
+            'cursor:pointer;user-select:none;display:flex;align-items:center;gap:10px;backdrop-filter:blur(4px);';
+        ov.innerHTML = '<span style="width:7px;height:7px;background:#fff;border-radius:50%;box-shadow:0 0 8px #fff;animation:pulse 1.2s infinite;"></span>' +
+                       '<span>AD · ' + ad.name.toUpperCase() + '</span>' +
+                       '<span style="opacity:0.85;border-left:1px solid rgba(255,255,255,0.4);padding-left:10px;font-size:10px;font-weight:600;">OYNAMAK İÇİN TIKLA →</span>';
         ov.onclick = function(e) { e.stopPropagation(); redirectToAppStore(ad); };
         document.querySelector('.video-wrapper').appendChild(ov);
         
-        // Yayın başlıyor göstergesi KALDIRILDI - subtitles kutusuyla çakışıyordu (kullanıcı bildirimi zaten toast ile geliyor)
+        // PREMIUM REKLAM BİLGİ BARI — sağ üst köşede geri sayım
+        var adWait = document.createElement('div');
+        adWait.id = 'adWaitBar';
+        adWait.setAttribute('data-testid', 'ad-wait-bar');
+        adWait.style.cssText = 'position:absolute;top:15px;right:140px;z-index:22;padding:8px 14px 8px 12px;' +
+            'background:linear-gradient(90deg,rgba(8,4,14,0.88) 0%,rgba(20,8,30,0.88) 100%);' +
+            'border:1px solid rgba(0,240,255,0.35);' +
+            'box-shadow:0 4px 16px rgba(0,0,0,0.5),inset 0 0 20px rgba(0,240,255,0.08);' +
+            'font-family:Orbitron,sans-serif;font-size:10px;color:#b8e8ff;letter-spacing:2px;' +
+            'display:flex;align-items:center;gap:10px;backdrop-filter:blur(6px);';
+        adWait.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="var(--cyan)" style="flex-shrink:0;"><circle cx="12" cy="12" r="10" fill="none" stroke="var(--cyan)" stroke-width="1.8"/><path d="M12 6v6l4 2" stroke="var(--cyan)" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>' +
+                           '<div style="display:flex;flex-direction:column;line-height:1.2;">' +
+                             '<span style="color:var(--cyan);font-size:9px;opacity:0.75;">YAYIN HAZIRLANIYOR</span>' +
+                             '<span style="font-size:13px;font-weight:700;color:#fff;letter-spacing:1.5px;">Reklam <span id="adCountdown">--</span> sn</span>' +
+                           '</div>' +
+                           '<div style="flex-shrink:0;width:44px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;margin-left:6px;">' +
+                             '<div id="adProgress" style="height:100%;width:0%;background:linear-gradient(90deg,var(--cyan),var(--pink));transition:width 0.3s linear;"></div>' +
+                           '</div>';
+        document.querySelector('.video-wrapper').appendChild(adWait);
         
         // Tıklama engel katmanı KALDIRILDI
         // (Video zaten browser controls'sız, clickLayer ses butonunu/CC'yi blokluyordu - kritik bug)
@@ -1222,11 +1296,14 @@
             if (mySession !== _prerollSessionId) { done = true; return; }
             done = true;
             if (_prerollMaxTimer) { clearTimeout(_prerollMaxTimer); _prerollMaxTimer = null; }
+            if (_adCountdownTimer) { clearInterval(_adCountdownTimer); _adCountdownTimer = null; }
             hideAdOverlay();
             var el = document.getElementById('prerollInfo');
             if (el) el.remove();
             var cl = document.getElementById('prerollClickLayer');
             if (cl) cl.remove();
+            var wb = document.getElementById('adWaitBar');
+            if (wb) wb.remove();
             video.onended = null;
             video.onerror = null;
             _prerollActive = false;
@@ -1240,6 +1317,19 @@
         
         // Reklam bitince (video.onended) otomatik store'a yönlendir + yayına geç
         video.onended = function() { finish(true); };
+        
+        // Canlı geri sayım - reklam süresi boyunca kalan saniye + ilerleme çubuğu
+        if (_adCountdownTimer) { clearInterval(_adCountdownTimer); }
+        _adCountdownTimer = setInterval(function() {
+            if (mySession !== _prerollSessionId) { clearInterval(_adCountdownTimer); _adCountdownTimer = null; return; }
+            var dur = (isFinite(video.duration) && video.duration > 0) ? video.duration : 30;
+            var cur = video.currentTime || 0;
+            var remaining = Math.max(0, Math.ceil(dur - cur));
+            var cd = document.getElementById('adCountdown');
+            var pg = document.getElementById('adProgress');
+            if (cd) cd.textContent = remaining;
+            if (pg) pg.style.width = Math.min(100, (cur / dur) * 100) + '%';
+        }, 300);
         
         // Güvenlik: video yüklenmezse veya çok uzunsa zaman sonra geç (redirect YOK - ortada kesilmiş)
         _prerollMaxTimer = setTimeout(function() { finish(false); }, MAX_AD_DURATION);
@@ -1291,6 +1381,8 @@
         if (_pInfo) _pInfo.remove();
         var _pClick = document.getElementById('prerollClickLayer');
         if (_pClick) _pClick.remove();
+        // Ragga Oktay müzik barını gizle (sadece fastx açıkken görünür)
+        if (!channel.isComingSoon) { try { hideRaggaPlayer(); } catch(e){} }
         isPlaying = false;
         retryCount = 0;
         streamSessionId++; // Eski callback'leri geçersiz kıl
@@ -1310,37 +1402,10 @@
                 '<div style="position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,rgba(255,0,170,0.04) 0 2px,transparent 2px 18px);pointer-events:none;"></div>' +
                 '<div style="font-family:Orbitron,sans-serif;font-size:13px;letter-spacing:4px;color:var(--pink);text-shadow:0 0 12px var(--pink);margin-bottom:16px;animation:pulse 2s infinite;">● ' + (channel.name) + '</div>' +
                 '<div style="font-family:Orbitron,sans-serif;font-size:clamp(28px,5vw,56px);font-weight:900;letter-spacing:6px;background:linear-gradient(90deg,var(--cyan),var(--pink),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-shadow:0 0 30px rgba(0,240,255,0.3);text-align:center;padding:0 20px;">' + (channel.comingText || 'FRAGMAN YAKINDA') + '</div>' +
-                '<div id="ragOktayInfo" style="margin-top:34px;display:flex;align-items:center;gap:14px;font-family:VT323,monospace;color:#e8d4b8;font-size:15px;letter-spacing:2px;background:rgba(0,0,0,0.5);padding:12px 22px;border:1px solid rgba(232,212,184,0.3);cursor:pointer;" title="Tıkla - müziği başlat/durdur">' +
-                '<svg id="ragOktayIcon" width="18" height="18" viewBox="0 0 24 24" fill="#e8d4b8" style="animation:pulse 1.5s infinite;"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>' +
-                '<span>♪ RAGGA OKTAY · <em style="color:var(--pink);">HASRETİM GİTME KAL</em></span>' +
-                '</div>' +
-                '<audio id="ragOktayAudio" preload="auto" loop style="display:none;" src="/ragga_oktay.mp3"></audio>';
+                '<div style="margin-top:22px;font-family:VT323,monospace;font-size:14px;color:#888;letter-spacing:2px;">MÜZİK · AŞAĞIDA</div>';
             document.querySelector('.video-wrapper').appendChild(csWrap);
-            // Şarkıyı oynatmayı dene (user gesture ile gelindiyse ses açık, değilse muted denemesi)
-            try {
-                var _rgAudio = csWrap.querySelector('#ragOktayAudio');
-                var _rgInfo = csWrap.querySelector('#ragOktayInfo');
-                if (_rgAudio) {
-                    _rgAudio.volume = 0.45;
-                    _rgAudio.muted = isMuted;
-                    var _rgTry = _rgAudio.play();
-                    if (_rgTry && _rgTry.catch) {
-                        _rgTry.catch(function(){
-                            // Autoplay engellendi - tıklamaya bağla
-                            _rgInfo.addEventListener('click', function _rgStart(){
-                                _rgAudio.muted = false;
-                                _rgAudio.play().catch(function(){});
-                                _rgInfo.removeEventListener('click', _rgStart);
-                            });
-                        });
-                    }
-                    // Info bandına tıklanınca pause/play
-                    _rgInfo.addEventListener('click', function(){
-                        if (_rgAudio.paused) { _rgAudio.muted = false; _rgAudio.play().catch(function(){}); }
-                        else { _rgAudio.pause(); }
-                    });
-                }
-            } catch(e) {}
+            // Ragga Oktay müzik barını GÖSTER ve çal
+            try { showRaggaPlayer(); } catch(e) {}
             statusText.textContent = 'YAKINDA';
             statusBadge.className = 'live-badge';
             isPlaying = false;
@@ -2674,15 +2739,15 @@
     }
 
     // ============================================
-    // SUNUCU 1/2/3 DİL FARKLILAŞTIRMASI
-    // Server 1: Türkçe ses + Türkçe altyazı
-    // Server 2: İngilizce ses + altyazısız
-    // Server 3: İngilizce ses + İngilizce altyazı (otomatik)
+    // SUNUCU DİL HARİTASI
+    // Sunucu 1: İngilizce ses + Türkçe altyazı
+    // Sunucu 2: Türkçe dublaj (ses) + altyazısız
+    // Sunucu 3 (EU): İngilizce ses + İngilizce altyazı
     // ============================================
     window.getServerLang = function(serverIdx) {
-        if (serverIdx === 0) return { audio: 'tr', sub: 'tr', ccOn: true };
-        if (serverIdx === 1) return { audio: 'en', sub: 'tr', ccOn: false };
-        return { audio: 'en', sub: 'en', ccOn: true }; // Server 3 (EU) = EN + EN CC
+        if (serverIdx === 0) return { audio: 'en', sub: 'tr', ccOn: true };   // S1: EN audio + TR CC
+        if (serverIdx === 1) return { audio: 'tr', sub: 'off', ccOn: false }; // S2: TR dublaj
+        return { audio: 'en', sub: 'en', ccOn: true };                         // S3 (EU): EN + EN CC
     };
     
     document.addEventListener('DOMContentLoaded', () => {
