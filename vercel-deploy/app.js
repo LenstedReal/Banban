@@ -71,17 +71,16 @@
     };
 
     // ============================================
-    // REKLAM SİSTEMİ - 5 Farklı Video (HEPSİ MOBİL OYUN)
+    // REKLAM SİSTEMİ - 4 Farklı Video (HEPSİ MOBİL OYUN, video-URL eşleşmesi doğrulandı)
     // ============================================
     var ADS = [
         { name: 'PUBG MOBILE', url: 'https://play.google.com/store/apps/details?id=com.tencent.ig', color: '#FF6600', vid: 'ad_pubg' },
         { name: 'eFootball', url: 'https://play.google.com/store/apps/details?id=jp.konami.pesam', color: '#0066FF', vid: 'ad_efootball' },
-        { name: 'Standoff 2', url: 'https://play.google.com/store/apps/details?id=com.axlebolt.standoff2', color: '#00CC66', vid: 'ad_efcrossover' },
         { name: 'Call of Duty Mobile', url: 'https://play.google.com/store/apps/details?id=com.activision.callofduty.shooter', color: '#00CC44', vid: 'ad_cod' },
         { name: 'Lords Mobile', url: 'https://play.google.com/store/apps/details?id=com.igg.android.lordsmobile', color: '#CC0000', vid: 'ad_lords' }
     ];
-    function shuffleAds(){var a=ADS.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}sessionStorage.setItem('bb_ads',JSON.stringify(a));sessionStorage.setItem('bb_adi','0');sessionStorage.setItem('bb_adv','5_'+ADS.map(function(x){return x.name;}).join('|'));return a;}
-    function getAds(){var expected='5_'+ADS.map(function(x){return x.name;}).join('|');var v=sessionStorage.getItem('bb_adv');if(v!==expected){return shuffleAds();}var s=sessionStorage.getItem('bb_ads');return s?JSON.parse(s):shuffleAds();}
+    function shuffleAds(){var a=ADS.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}sessionStorage.setItem('bb_ads',JSON.stringify(a));sessionStorage.setItem('bb_adi','0');sessionStorage.setItem('bb_adv','4v2_'+ADS.map(function(x){return x.name;}).join('|'));return a;}
+    function getAds(){var expected='4v2_'+ADS.map(function(x){return x.name;}).join('|');var v=sessionStorage.getItem('bb_adv');if(v!==expected){return shuffleAds();}var s=sessionStorage.getItem('bb_ads');return s?JSON.parse(s):shuffleAds();}
     function getAd(){var ads=getAds();var i=parseInt(sessionStorage.getItem('bb_adi')||'0');if(i>=ads.length)i=0;return ads[i];}
     function nextAd(){var ads=getAds();var i=parseInt(sessionStorage.getItem('bb_adi')||'0')+1;if(i>=ads.length)i=0;sessionStorage.setItem('bb_adi',String(i));}
 
@@ -790,6 +789,45 @@
         if (a) { try { a.pause(); a.currentTime = 0; } catch(e){} }
     }
 
+    // === PEAKY BLINDERS SPLASH - her kanal açılışında + reklam bitiminde gösterilen intro ===
+    function showPeakySplash(duration, onDone) {
+        try {
+            // Önceki splash varsa temizle
+            var old = document.getElementById('peakySplash');
+            if (old) old.remove();
+            var wrap = document.querySelector('.video-wrapper');
+            if (!wrap) { if (onDone) onDone(); return; }
+            var sp = document.createElement('div');
+            sp.id = 'peakySplash';
+            sp.setAttribute('data-testid', 'peaky-splash');
+            sp.style.cssText = 'position:absolute;inset:0;z-index:40;background:#000 center/cover no-repeat url("/peaky_splash.jpg");opacity:0;transition:opacity 0.35s ease;overflow:hidden;pointer-events:none;';
+            // Koyu vignette + alta doğru gradient (metin okunurluğu için)
+            var veil = document.createElement('div');
+            veil.style.cssText = 'position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%, transparent 0%, rgba(0,0,0,0.35) 70%, rgba(0,0,0,0.75) 100%);';
+            sp.appendChild(veil);
+            // Parıltılı banbansports markası + tagline (alt orta)
+            var lbl = document.createElement('div');
+            lbl.style.cssText = 'position:absolute;left:50%;bottom:36px;transform:translateX(-50%);font-family:Orbitron,sans-serif;text-align:center;pointer-events:none;';
+            lbl.innerHTML = '<div style="font-size:22px;font-weight:900;letter-spacing:4px;background:linear-gradient(90deg,#00f0ff,#ff00aa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-shadow:0 0 18px rgba(0,240,255,0.35);">banbansports</div>' +
+                           '<div style="font-size:10px;color:#e8d4b8;letter-spacing:6px;margin-top:4px;opacity:0.85;">UNDERGROUND HD · YAYIN HAZIRLANIYOR</div>';
+            sp.appendChild(lbl);
+            // CRT tarama çizgisi
+            var scan = document.createElement('div');
+            scan.style.cssText = 'position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,0.12) 0 1px,transparent 1px 3px);pointer-events:none;mix-blend-mode:multiply;';
+            sp.appendChild(scan);
+            wrap.appendChild(sp);
+            // Fade in
+            requestAnimationFrame(function(){ sp.style.opacity = '1'; });
+            setTimeout(function(){
+                sp.style.opacity = '0';
+                setTimeout(function(){
+                    if (sp.parentNode) sp.parentNode.removeChild(sp);
+                    if (onDone) onDone();
+                }, 360);
+            }, duration || 1200);
+        } catch(e) { if (onDone) onDone(); }
+    }
+
     function updateScoreboard(match) {
         document.getElementById('team1').textContent = match.team1 || '---';
         document.getElementById('team2').textContent = match.team2 || '---';
@@ -1067,6 +1105,7 @@
     var _prerollMaxTimer = null;
     var _prerollSessionId = 0;
     var _adCountdownTimer = null;
+    var _splashJustShown = false; // Peaky splash flag (her kanal açılışında 1 kez)
 
     // ============================================
     // i18n - TR/EN (kullanıcı Türkiye dışındaysa İngilizce)
@@ -1258,7 +1297,7 @@
             'border:1px solid rgba(255,255,255,0.45);box-shadow:0 4px 18px rgba(0,0,0,0.5),0 0 24px ' + ad.color + '80;' +
             'cursor:pointer;user-select:none;display:flex;align-items:center;gap:10px;backdrop-filter:blur(4px);';
         ov.innerHTML = '<span style="width:7px;height:7px;background:#fff;border-radius:50%;box-shadow:0 0 8px #fff;animation:pulse 1.2s infinite;"></span>' +
-                       '<span>AD · ' + ad.name.toUpperCase() + '</span>' +
+                       '<span>' + ad.name.toUpperCase() + '</span>' +
                        '<span style="opacity:0.85;border-left:1px solid rgba(255,255,255,0.4);padding-left:10px;font-size:10px;font-weight:600;">OYNAMAK İÇİN TIKLA →</span>';
         ov.onclick = function(e) { e.stopPropagation(); redirectToAppStore(ad); };
         document.querySelector('.video-wrapper').appendChild(ov);
@@ -1312,7 +1351,10 @@
             if (triggerRedirect === true) {
                 redirectToAppStore(ad);
             }
-            if (onComplete) onComplete();
+            // PEAKY SPLASH - Reklam bitince (auto-tıklama sonrası yayın başlamadan önce) göster
+            showPeakySplash(1100, function() {
+                if (onComplete) onComplete();
+            });
         }
         
         // Reklam bitince (video.onended) otomatik store'a yönlendir + yayına geç
@@ -1345,6 +1387,17 @@
             showInAppNotification('REKLAM OYNUYOR', 'Reklamın bitmesini bekleyin, sonra kanal değişir.', 'info');
             return;
         }
+
+        // PEAKY SPLASH - Her kanal açılışında (reklam öncesi 1.1 sn intro görseli)
+        if (!skipPreroll && !_splashJustShown) {
+            _splashJustShown = true;
+            showPeakySplash(1100, function() {
+                // Splash bitince normal akışa devam - skipSplash (skipPreroll değil!) ile
+                setupStream(skipPreroll); // skipPreroll hala false ama _splashJustShown=true olduğu için atlar
+            });
+            return;
+        }
+        _splashJustShown = false; // Bir sonraki kanal değişiminde splash tekrar gösterilebilsin
 
         // Eski YouTube iframe varsa kaldır
         var oldIframe = document.getElementById('ytIframe');

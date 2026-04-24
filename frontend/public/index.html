@@ -473,8 +473,8 @@
             transition: all 0.3s;
         }
         .sponsor-item:hover img { filter: brightness(1.22) drop-shadow(0 0 8px var(--cyan)); }
-        /* Nesine: sabit boyut ver ki bazı tarayıcılarda SVG/PNG kaybolmasın */
-        .sponsor-item[data-testid="sponsor-nesine"] img { width: 120px !important; height: 40px !important; }
+        /* Nesine: diğer sponsorlarla uyumlu boyut */
+        .sponsor-item[data-testid="sponsor-nesine"] img { height: 42px !important; width: auto !important; max-width: 140px; }
         .sponsor-item span {
             font-family: 'Orbitron', sans-serif; font-size: 11px; font-weight: 700;
             color: #e0e0e0; letter-spacing: 1.5px; transition: all 0.3s;
@@ -930,7 +930,7 @@
                     <div class="sponsor-item"><img src="https://logo.clearbit.com/sixt.com" onerror="this.onerror=null;this.src='https://www.google.com/s2/favicons?domain=sixt.com&sz=128'" alt=""><span>SIXT</span></div>
                     <div class="sponsor-item"><img src="https://logo.clearbit.com/socar.com.tr" onerror="this.onerror=null;this.src='https://www.google.com/s2/favicons?domain=socar.com.tr&sz=128'" alt=""><span>SOCAR</span></div>
                     <div class="sponsor-item" data-testid="sponsor-meritking"><img src="/meritking_logo.jpg" alt="MeritKing"><span>MeritKing</span></div>
-                    <div class="sponsor-item" data-testid="sponsor-nesine"><img src="/nesine_logo.svg" onerror="this.onerror=null;this.src='/nesine_logo.png';" alt="Nesine"><span>Nesine</span></div>
+                    <div class="sponsor-item" data-testid="sponsor-nesine"><img src="/nesine_logo.png?v=3" alt="Nesine"><span>Nesine</span></div>
                     <div class="sponsor-item"><img src="https://logo.clearbit.com/turkishairlines.com" onerror="this.onerror=null;this.src='https://www.google.com/s2/favicons?domain=turkishairlines.com&sz=128'" alt=""><span>THY</span></div>
                     <div class="sponsor-item"><img src="https://logo.clearbit.com/garantibbva.com.tr" onerror="this.onerror=null;this.src='https://www.google.com/s2/favicons?domain=garantibbva.com.tr&sz=128'" alt=""><span>Garanti BBVA</span></div>
                     <div class="sponsor-item"><img src="https://logo.clearbit.com/avis.com.tr" onerror="this.onerror=null;this.src='https://www.google.com/s2/favicons?domain=avis.com.tr&sz=128'" alt=""><span>AVIS</span></div>
