@@ -2785,6 +2785,8 @@
                     var _ac = new (window.AudioContext || window.webkitAudioContext)();
                     if (_ac.state === 'suspended') _ac.resume();
                 } catch(err2){}
+                // 4. Start screen Shelby zaten gösterildi → setupStream ilk çağrısında splash atla (çift Shelby önlenir)
+                _splashJustShown = true;
             } catch(err) {}
             setupStream();
         }
