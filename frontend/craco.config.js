@@ -81,8 +81,9 @@ webpackConfig.devServer = (devServerConfig) => {
   return devServerConfig;
 };
 
-// Wrap with visual edits (automatically adds babel plugin, dev server, and overlay in dev mode)
-if (isDevServer) {
+// Wrap with visual edits - DISABLED (kullanıcı "emergent ibareleri istemiyorum" dedi)
+// Gerekirse: CRA'nın kendi dev overlay'i de kapatılabilir
+if (false && isDevServer) {
   try {
     const { withVisualEdits } = require("@emergentbase/visual-edits/craco");
     webpackConfig = withVisualEdits(webpackConfig);

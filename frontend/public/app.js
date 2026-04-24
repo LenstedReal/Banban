@@ -280,7 +280,17 @@
         try { localStorage.setItem('bb_last_match', JSON.stringify(match)); } catch(e) {}
     }
     function getCachedScoreboard() {
-        try { var s = localStorage.getItem('bb_last_match'); return s ? JSON.parse(s) : null; } catch(e) { return null; }
+        try {
+            var s = localStorage.getItem('bb_last_match');
+            if (!s) return null;
+            var m = JSON.parse(s);
+            // Alakasız cache'i temizle: Türk takımı veya Türkçe lig adı yoksa cache'i yok say
+            var text = ((m.team1||'')+' '+(m.team2||'')+' '+(m.league||'')).toLowerCase();
+            var hasTurk = turkishTeams.some(function(t){return text.includes(t.toLowerCase());}) ||
+                          /türk|trendyol|süper lig|şampiyon|ziraat/i.test(m.league||'');
+            if (!hasTurk) { try { localStorage.removeItem('bb_last_match'); } catch(e){} return null; }
+            return m;
+        } catch(e) { return null; }
     }
     // Sayfa açılırken cache'den yükle (internet gelmeden önce)
     var cached = getCachedScoreboard();
@@ -580,7 +590,9 @@
                 var data = await resp.json();
                 var stages = data.Stages || [];
                 var turkTeams = ['galatasaray','fenerbah','besiktas','beşiktaş','trabzonspor','kocaelispor','samsunspor','antalyaspor','alanyaspor','kayserispor','kasımpaşa','sivasspor','turkey','türkiye','istanbul','göztepe','eyüp','adana','karagümrük','karagumruk','gençlerbirliği','başakşehir','hatayspor','pendik','bodrum','sakaryaspor'];
-                var bigKeys = ['champions league','europa league','süper lig','super lig','1st lig','premier league','la liga','laliga','serie a','bundesliga','ligue 1'];
+                // SADECE gerçek büyük Avrupa ligleri (Singapore Premier League gibi alakasız ligleri dışarıda bırak)
+                var bigCountries = ['england','spain','germany','italy','france','turkiye','turkey','türkiye','europe','world','international','uefa'];
+                var bigLeagueNames = ['champions league','europa league','conference league','nations league','süper lig','super lig','bundesliga','la liga','laliga','premier league','serie a','ligue 1','world cup','euro'];
                 
                 var importantMatch = null; // Büyük Türk takım maçı (GS, FB, BJK, TS)
                 var importantPrio = 0;
@@ -592,8 +604,10 @@
                 for (var i = 0; i < stages.length; i++) {
                     var stg = stages[i], cn = stg.Cnm||'', sn = stg.Snm||'', cl = cn.toLowerCase(), sl = sn.toLowerCase();
                     var isTurkL = cl.includes('turk') || cl.includes('türk');
-                    var isBigL = bigKeys.some(function(k){return (sl+' '+cl).includes(k);});
-                    if ((sl+' '+cl).includes('caf') || cl.includes('asia') || (sl+' '+cl).includes('concacaf')) isBigL = false;
+                    // Big league: ülke MUTLAKA büyük Avrupa listesinden olmalı + lig adı bigLeagueNames'den
+                    var isBigCountry = bigCountries.some(function(c){return cl.includes(c);});
+                    var isBigLeagueName = bigLeagueNames.some(function(k){return sl.includes(k);});
+                    var isBigL = isBigCountry && isBigLeagueName;
                     var evts = stg.Events||[];
                     for (var j = 0; j < evts.length; j++) {
                         var ev = evts[j];
@@ -618,7 +632,7 @@
                 scoreboardImportantMatch = importantMatch;
                 scoreboardLiveMatch = liveTurkMatch;
                 
-                if (importantMatch || liveTurkMatch || bigLeagueMatch) {
+                if (importantMatch || liveTurkMatch) {
                     hasLiveScoreData = true;
                     liveScoreChecked = true;
                     
@@ -642,31 +656,21 @@
                     
                     // 3. Önemli maç BİTTİ + canlı Türk maçı yok → yarınki en önemli Türk maçına geç
                     if (impFinished && !liveTurkMatch) {
-                        // Module-level timer (localStorage yerine) - session reset edildiğinde yeniden başlar
                         var matchKey = (importantMatch.team1 || '') + '-' + (importantMatch.team2 || '');
                         if (!window._ftTimestamps) window._ftTimestamps = {};
                         if (!window._ftTimestamps[matchKey]) window._ftTimestamps[matchKey] = Date.now();
                         var elapsed = Date.now() - window._ftTimestamps[matchKey];
-                        // İlk 5 dakika biten maç sonucu göster
                         if (elapsed < 5 * 60 * 1000) {
                             cacheScoreboard(importantMatch);
                             updateScoreboard(importantMatch);
                             return;
                         }
-                        // 5dk sonra yarınki Türk maçına geç
                         var tmr = await fetchTomorrowTurkishMatch();
                         if (tmr) {
                             cacheScoreboard(tmr);
                             updateScoreboard(tmr);
                             return;
                         }
-                        // Yarın Türk maçı yoksa bigLeague fallback
-                        if (bigLeagueMatch) {
-                            cacheScoreboard(bigLeagueMatch);
-                            updateScoreboard(bigLeagueMatch);
-                            return;
-                        }
-                        // Hiçbir alternatif yoksa biten maçı göster
                         cacheScoreboard(importantMatch);
                         updateScoreboard(importantMatch);
                         return;
@@ -697,9 +701,20 @@
                     if (importantMatch) { cacheScoreboard(importantMatch); updateScoreboard(importantMatch); return; }
                     // 6. Sadece canlı Türk maçı
                     if (liveTurkMatch) { cacheScoreboard(liveTurkMatch); updateScoreboard(liveTurkMatch); return; }
-                    // 7. Büyük lig fallback
-                    if (bigLeagueMatch) { cacheScoreboard(bigLeagueMatch); updateScoreboard(bigLeagueMatch); return; }
                 }
+                
+                // Türk maçı yok → önce yarınki Türk maçına bak, sonra bigLeague, sonra gizle
+                hasLiveScoreData = true;
+                liveScoreChecked = true;
+                var tmr2 = await fetchTomorrowTurkishMatch();
+                if (tmr2) { cacheScoreboard(tmr2); updateScoreboard(tmr2); return; }
+                if (bigLeagueMatch && bigLeagueMatch.isLive) {
+                    // Sadece CANLI büyük Avrupa ligi maçı (başlamamış olanı göstermez)
+                    cacheScoreboard(bigLeagueMatch); updateScoreboard(bigLeagueMatch); return;
+                }
+                // Hiçbir uygun maç yok → scoreboard'ı gizle (default göster yerine)
+                hideScoreboard();
+                return;
             }
         } catch(e){console.log('LiveScore API hatası:',e);}
         try{if(BACKEND_URL){var r=await fetch(BACKEND_URL+'/api/scores/live');if(r.ok){updateScoreboard(await r.json());liveScoreChecked=true;return;}}}catch(e){}
@@ -714,6 +729,16 @@
             updateScoreboard(cached);
         }
         // Cache de yoksa boş bırak (Türkiye-Romanya gösterme)
+    }
+
+    function hideScoreboard() {
+        // Önemli/uygun maç yokken scoreboard'u gizle (alakasız maç göstermektense)
+        var li = document.getElementById('leagueInfo');
+        var tc = document.getElementById('teamsContainer');
+        var mm = document.getElementById('matchMinute');
+        if (li) li.style.opacity = '0';
+        if (tc) tc.style.opacity = '0';
+        if (mm) mm.style.opacity = '0';
     }
 
     function updateScoreboard(match) {
@@ -1182,13 +1207,7 @@
         ov.onclick = function(e) { e.stopPropagation(); redirectToAppStore(ad); };
         document.querySelector('.video-wrapper').appendChild(ov);
         
-        // Yayın başlıyor göstergesi (ses butonunu kaplamasın - ÜST ORTA)
-        var info = document.createElement('div');
-        info.id = 'prerollInfo';
-        info.setAttribute('data-testid', 'preroll-info');
-        info.style.cssText = 'position:absolute;top:18px;left:50%;transform:translateX(-50%);z-index:22;padding:8px 18px;background:rgba(0,0,0,0.8);color:var(--cyan);font-family:VT323,monospace;font-size:13px;border:1px solid var(--cyan);letter-spacing:2px;pointer-events:none;';
-        info.textContent = 'YAYIN BAŞLIYOR...';
-        document.querySelector('.video-wrapper').appendChild(info);
+        // Yayın başlıyor göstergesi KALDIRILDI - subtitles kutusuyla çakışıyordu (kullanıcı bildirimi zaten toast ile geliyor)
         
         // Tıklama engel katmanı KALDIRILDI
         // (Video zaten browser controls'sız, clickLayer ses butonunu/CC'yi blokluyordu - kritik bug)

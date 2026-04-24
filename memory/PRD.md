@@ -1,96 +1,44 @@
 # banbansports UNDERGROUND HD - PRD
 
-## Proje Tanımı
-Canlı spor yayını platformu. Retro-futuristik cyberpunk tasarımlı, çoklu kanal destekli, canlı skor takipli web uygulaması.
+## Problem Statement
+Kullanıcı: "Projemdeki hataları derinlemesine analiz et ve bildir" (repo: https://github.com/LenstedReal/Banban)
+Türkiye odaklı IPTV/spor/film streaming platformu. 14+ kanal (TRT1, TRT Haber, TV8, TRT Spor, beIN Sports 1/2, S Sport, AS TV, FB TV, ATV, A Spor, Hızlı Öfkeli 11, Spider-Man BND vs.). Live futbol skorları, maç merkezi, reklam sistemi, çok dilli altyazı (TR/EN/OFF), bildirimler, sponsor görünümü.
 
-## Session 3 - 23 Nisan 2026 (Ultra Derin Tarama + Kullanıcı Talepleri)
+## Tech Stack
+- Frontend: **Static HTML+JS** (React disabled). `/app/frontend/public/index.html` (938 satır) + `app.js` (2720+ satır) + inline CSS. CRA sadece dev server olarak kullanılıyor.
+- Backend: FastAPI + MongoDB + httpx + websockets. LiveScore API proxy, scores live endpoint, stream health, beIN m3u8 manifest üretimi.
+- Deploy: Vercel (serverless) — `/app/vercel-deploy/` klasörü production kopyası.
 
-### Testing Agent ile tespit edilen bugler (iteration_9.json)
-Tüm 20 bug matrix kontrol edildi, 6 major + 3 minor düzeltildi.
+## Session Log
 
-### Yapılan Ana Düzeltmeler (Son session)
+### Session 4 (Apr 24, 2026) - Deep Analysis + Bug Fixes
+**Yapılan düzeltmeler:**
+1. **Scoreboard alakasız maç gösterme** — `fetchLiveScore`'da `bigKeys` listesi Singapur "Premier League"'i de büyük lig sayıyordu. `bigCountries` + `bigLeagueNames` AND mantığına çevrildi. Sadece gerçek Avrupa üst liglerini + Türk maçlarını gösterir. Cache de Türk olmayan maçları filtreliyor.
+2. **"YAYIN BAŞLIYOR..." badge kaldırıldı** — Subtitles kutusuyla görsel çakışması. REKLAM badge yeterli.
+3. **REKLAM badge tıklanabilir** — Reklam sırasında "REKLAM · Standoff 2 · TIKLA" → Play Store'a yönlendiriyor.
+4. **Audio autoplay unlock** — Start screen click → video.play().pause() + AudioContext.resume() → sonra setupStream. Autoplay engellenirse muted fallback + unmute button.
+5. **Ragga Oktay - Hasretim Gitme Kal** — Hızlı ve Öfkeli 11 "YAKINDA" ekranına eklendi (SoundCloud'dan 4.4MB MP3). Info bandına tıkla → play/pause.
+6. **Shelby görseli açma** — filter:brightness 0.65→0.92, overlay gradient 0.92→0.75 → yüz net görünüyor.
+7. **Nesine logo** — Yeni profesyonel SVG (yeşil "nesine.com"). Sabit 120x40px + PNG fallback.
+8. **Emergent visual-edits kapatıldı** — craco.config.js `withVisualEdits` devre dışı. Kullanıcı "emergent ibareleri istemiyorum" dedi.
+9. **Tablet responsive** — 769-1024px breakpoint eklendi, header sıkışması giderildi.
+10. **Vercel sync** — app.js/index.html/nesine_logo.svg/ragga_oktay.mp3 → `/app/vercel-deploy/` dizinine kopyalandı.
 
-1. **Kanal isimleri** (DEMO → TRAILER)
-   - demo1 → SİNTEL TRAILER (lokal /sintel.mp4, 4.2MB Blender Sintel trailer)
-   - demo2 → TEARS OF STEEL TRAILER (TR altyazılı, unified-streaming HLS)
-   - demo3 → BIG BUCK BUNNY TRAILER (EN altyazılı, lokal /demo3.mp4 5MB)
-   - REKLAM kanalı kaldırıldı
+### Önceki sessionlar (PRD'de not)
+- Shelby başlatma ekranı, server 1/2/3 dil farklılaştırma, CC OFF fix, i18n
+- Reklam sistemi (Clash, PUBG, COD, Free Fire, Standoff 2, Lords Mobile, eFootball)
+- LiveScore integration, scoreboard cycle, match center
 
-2. **Pre-roll Reklam Sistemi**
-   - SADECE gerçek yayınlarda (TRT, beIN), Trailerlerde yok
-   - ATLAMA YOK - reklam bitince otomatik yayına geçer
-   - Reklam tıklanabilir → Play Store
+## Known Issues / Backlog
+- **P2**: Ağır refactor — `app.js` 2720 satır, modüllere bölünebilir
+- **P2**: `backend_test.py` eski URL, reklam kanalı hâlâ test ediyor → güncelleme
+- **P2**: FastAPI `@app.on_event` deprecated, lifespan'e geçiş
+- **P3**: Unused React/CRA bağımlılıkları temizle (500MB node_modules)
+- **P3**: Logo Clearbit bazı kullanıcılarda bloklanabilir (şu an çalışıyor)
 
-3. **Lig İsimleri Türkçeleştirme** (formatLeagueName() mapper)
-   - Süper Lig → Trendyol Süper Lig
-   - Turkiye Cup → Ziraat Türkiye Kupası
-   - 1st/2nd Lig → TFF 1./2. Lig
-   - Champions League → Şampiyonlar Ligi
-   - Europa League → Avrupa Ligi
-   - LaLiga → La Liga, Premier League → Premier Lig, vb.
-   - (Turkiye) suffix'i gizlendi
+## Test Status
+- Frontend screenshot: ✅ (1080x1920 tablet mode — tüm elemanlar düzgün)
+- Backend API: ✅ (/api/channels, /api/scores/live, /api/livescore/today, /api/stream/health, WS /api/ws/scores)
+- Scoreboard: ✅ Eyupspor vs Gaziantep FK (Trendyol Süper Lig) - Tampines Rovers gitti
+- Reklam + Ragga Oktay + Nesine logo: ✅ Ekran doğrulandı
 
-4. **Lig Filtre Butonları**
-   - 1. LİG ve 2. LİG kaldırıldı
-   - TÜRKİYE KUPASI eklendi
-   - Kalan: TÜMÜ, SÜPER LİG, TÜRKİYE KUPASI, ŞAMPİYONLAR LİGİ, SERİE A, BUNDESLIGA, LA LİGA, PREMİER LİG, LIGUE 1
-
-5. **Penaltı Skoru Gösterimi** (p 3-1)
-   - LiveScore API'sinden Trp1/Trp2 okunur
-   - Scoreboard: Samsunspor 0 (p 3) - (p 1) 0 Trabzonspor
-   - Match center: "0 - 0 (p 3-1)"
-   - FT/AP/AET/Pen. durumlarında gösterilir
-
-6. **Bildirim Sistemi Yeniden Yapılandırıldı**
-   - SADECE maç merkezinde görünen maçlar için bildirim (window._renderedMatchKeys filter)
-   - Çeşitlilik: GOL (top ikonu), SARI KART, KIRMIZI KART, PENALTI, MAÇ BAŞLADI, MAÇ YAKLAŞIYOR (30dk), DEVRE ARASI, 2.YARI, MAÇ BİTTİ (p X-Y penaltı dahil)
-   - LiveScore Incs field okunur (IT=6 sarı, IT=7 kırmızı, IT=9 penaltı)
-   - Chrome arka plan bildirimleri aktif (SW push event)
-
-7. **Scoreboard Küçültme**
-   - Desktop: 44px → 36px (skor)
-   - 32px → 26px (separator)
-   - Mobile 768px: 32px → 26px
-   - Mobile 420px: 26px → 22px
-
-8. **Team Name Overflow Fix**
-   - overflow: hidden, text-overflow: ellipsis eklendi
-   - Mobile clamp() fontsize artırıldı
-   - max-width: 100% ayarlandı
-
-9. **AP/AET/Pen. Status**
-   - Hem scoreboard hem match center artık MAÇ SONU gösteriyor
-   - AP ham gösterim yok
-
-10. **Donma Hatası Fix (Çoklu Polling)**
-    - fetchLiveScore çift interval düzeltildi (self-scheduling setTimeout chain)
-    - fetchAllMatches çift poll kaldırıldı
-    - WebSocket ping interval stacking düzeltildi
-    - Freeze overlay çift retry önlendi
-    - Preroll session cancel (kanal değişimi)
-
-11. **Server 3 (EU)** Apple bipbop → Akamai Kopenhag CDN
-
-12. **Sunucu yedekleri distinct** (aynı URL 2x denenmiyor)
-
-## Kanal Stream Kaynakları
-- SİNTEL: `/sintel.mp4` (lokal 4.2MB)
-- TEARS OF STEEL: demo.unified-streaming.com HLS
-- BIG BUCK BUNNY: `/demo3.mp4` (lokal 5MB)
-- TRT 1/HABER/SPOR: medya.trt.com.tr HLS
-- TV 8: daioncdn.net HLS
-- beIN SPORTS 1: backend /api/bein/master.m3u8 proxy
-- Sunucu 3 yedek: Akamai EU Kopenhag
-
-## Bildirim İkonları (8 PNG)
-/icons/goal.png, /icons/redcard.png, /icons/yellowcard.png, /icons/penalty.png, /icons/kickoff.png, /icons/halftime.png, /icons/fulltime.png, /icons/info.png
-
-## Kalan İşler / Backlog (P1)
-- Canlı beIN SPORTS 1 m3u8 URL (kullanıcı sağlayacak)
-- S Sport m3u8 (kullanıcı sağlayacak)
-- Vercel deploy (serverless API dosyaları hazır)
-- app.js refactor (2023 satır → modüller)
-- /app/backend/tests pytest regression dosyaları
-
-## Test Credentials
-- Hiçbir auth sistemi yok, kullanıcı bildirim izni tarayıcıdan verecek
