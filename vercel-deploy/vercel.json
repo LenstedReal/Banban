@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "public": true,
+  "rewrites": [
+    { "source": "/api/livescore/today", "destination": "/api/livescore" },
+    { "source": "/api/bein/master.m3u8", "destination": "/api/bein-master" }
+  ]
+}

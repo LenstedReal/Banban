@@ -1,0 +1,137 @@
+{
+  "summary": "Backend pytest suite (8/8 PASSED, 100%). Frontend smoke + bug verification on Banbansports UNDERGROUND HD confirmed 3 critical user-reported bugs and identified several additional issues. Tested: page load, channel switching, server switching (incl. network capture), scoreboard behavior, match center, league filters, notification toggle, mobile viewport, service worker registration, data-testid coverage, and console errors.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Scoreboard (match-banner)",
+        "issue": "Scoreboard STUCK on 'MAÇ SONU' (Gençlerbirliği 1-2 Galatasaray). When important Turkish club match is finished AND no live Turkish match exists, app.js (lines 484-488) just keeps displaying the finished match. No fallback to 'tomorrow's most important Turkish match' as user explicitly requested. Logic branch `impFinished && !liveTurkMatch` needs to query /api/livescore/date/{tomorrow} and pick the best Turkish/big-league match; otherwise at minimum iterate through today's upcoming Turkish matches.",
+        "selector": "[data-testid='match-minute'], #team1, #team2",
+        "priority": "CRITICAL"
+      },
+      {
+        "component": "Server Selector - Sunucu 3 (EU)",
+        "issue": "CONFIRMED via network capture: clicking Sunucu 3 (EU) triggers m3u8 request to https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8 (Apple bipbop test stream — the 'bip bip bip' tone video). Root cause: app.js line 50 `STREAMS.apple` and line 57-62 `SERVER_ALTERNATIVES` uses STREAMS.apple as the 3rd server for demo1, demo2, trt1, trthaber, trtspor, tv8. Must replace with real EU CDN fallback or at least a working stream (or disable Sunucu 3 when no EU alt exists).",
+        "selector": "[data-testid='server-2']",
+        "priority": "CRITICAL"
+      },
+      {
+        "component": "Push Notifications - icon",
+        "issue": "All push/in-app notifications use hardcoded icon 'tsl_logo.png' regardless of event type. app.js lines 683-684 and 694-695 set icon and badge statically. No per-type mapping (goal → ⚽ icon, redcard → 🟥, penalty → icon, kickoff, halftime, fulltime). Request: build a map { goal: 'icons/goal.png', redcard: 'icons/red.png', penalty: 'icons/pen.png', kickoff: 'icons/kick.png', halftime: 'icons/ht.png', fulltime: 'icons/ft.png' } OR use emoji/text-rendered SVG icons per `type` param.",
+        "selector": "n/a (runtime)",
+        "priority": "HIGH"
+      },
+      {
+        "component": "Scoreboard - foreign-league fallback triggers notifications",
+        "issue": "updateScoreboard() always calls sendMatchNotification(match, status) (app.js line 570). If scoreboard falls back to `bigLeagueMatch` (Premier League / Serie A etc. without any Turkish team), users with notifications ON can still get alerts for a foreign match. sendMatchNotification should hard-check isTurkish(match.team1) || isTurkish(match.team2) before dispatching. checkMatchEvents() is correctly gated but the separate scoreboard notification path is not.",
+        "selector": "n/a (logic)",
+        "priority": "HIGH"
+      },
+      {
+        "component": "Mobile Scoreboard text overflow",
+        "issue": "At 390px viewport, team names get visually clipped at left/right edges (e.g. 'GENÇLERBIRLİĞI' renders as 'ENÇLERBIRLİĞI' and 'GALATASARAY' as 'GALATASARA'). Need responsive font-size clamp or ellipsis/abbreviation for long team names on mobile.",
+        "selector": "#team1, #team2",
+        "priority": "MEDIUM"
+      },
+      {
+        "component": "Bildirim toggle UI",
+        "issue": "Clicking BİLDİRİM button had no observable UI change in test (stayed 'KAPALI'). In headless env permission was likely auto-denied, but UI should then show 'REDDEDİLDİ' / error hint rather than silent 'KAPALI'. Consider adding user-visible feedback when Notification.permission === 'denied'.",
+        "selector": "[data-testid='notif-toggle']",
+        "priority": "LOW"
+      },
+      {
+        "component": "Networking - 404 resource",
+        "issue": "One static resource returns 404 on initial page load (console log). Could not pinpoint exact URL from captured log — main agent should check /var/log/supervisor/frontend.*.log or DevTools network.",
+        "selector": "n/a",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Scoreboard match selection",
+        "issue": "No call to /api/livescore/date/{YYYYMMDD} for tomorrow's fixtures when today has only finished Turkish matches. Endpoint exists on backend (verified passing) but frontend fetchLiveScore only hits /api/livescore/today.",
+        "affected_selectors": ["[data-testid='match-minute']", "#team1", "#team2"]
+      },
+      {
+        "flow": "Video player server switch",
+        "issue": "Server 3 swap immediately loads a test-pattern stream with continuous audio tones which would annoy users live.",
+        "affected_selectors": ["[data-testid='server-2']", "[data-testid='video-player']"]
+      }
+    ],
+    "design_issues": [
+      {"screen": "Mobile 390px scoreboard", "issues": ["Long Turkish team names clip off left/right edges"]}
+    ]
+  },
+
+  "passed_tests": [
+    "Page loads (title: 'banbansports UNDERGROUND HD | SÜPER LİG'), no JS pageerror",
+    "All data-testid attributes present (58+ testids enumerated: header, logo, status-badge, notif-toggle, channel-*, match-banner, video-player, server-0..5, matches-grid, etc.)",
+    "15 channel tabs render: DEMO 1/2/3, REKLAM, TRT 1, TRT HABER, TV 8, TRT SPOR, beIN 1/2, S SPORT, GS TV, FB TV, ATV, A SPOR",
+    "REKLAM channel shows rotating game ad overlay (Destiny 2 captured)",
+    "Match Center renders 41 match cards with 10 league filter buttons (TÜMÜ, SÜPER LİG, 1. LİG, 2. LİG, ŞAMPİYONLAR LİGİ, SERIE A, BUNDESLIGA, LA LIGA, PREMIER LİG, LIGUE 1)",
+    "Scoreboard reads real LiveScore data (Gençlerbirliği vs Galatasaray — Süper Lig)",
+    "Service Worker registered at /sw.js",
+    "Backend: GET /api/ 200",
+    "Backend: GET /api/livescore/today returns valid {Stages: [...]} (non-empty)",
+    "Backend: GET /api/livescore/date/{YYYYMMDD} 200",
+    "Backend: GET /api/scores/live returns {type, team1, team2, score1, score2, league, status}",
+    "Backend: GET /api/channels returns all 14 channel entries",
+    "Backend: GET /api/stream/health returns {ok,status} for TRT1",
+    "Backend: GET /api/bein/master.m3u8 builds custom HLS manifest correctly",
+    "6 server selector buttons visible (Sunucu 1 TR / 2 Yedek / 3 EU / 4 / 5 / 6)"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_banbansports_api.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+
+  "action_items": [
+    "FIX scoreboard stuck on MAÇ SONU: when the important Turkish club match is FT and no liveTurkMatch exists, fetch /api/livescore/date/{tomorrow_yyyymmdd} and pick best upcoming Turkish (or Süper Lig) match. Add 30-60s auto-refresh.",
+    "FIX Sunucu 3 (EU) Apple bipbop stream: remove STREAMS.apple fallback from SERVER_ALTERNATIVES in app.js L56-64. Replace with a real EU mirror or hide Sunucu 3 when no alt exists. STREAMS.apple constant should also be removed entirely to prevent regressions.",
+    "FIX push-notification icons: map `type` (goal/redcard/penalty/kickoff/halftime/fulltime/kickoff_soon) → dedicated icon asset. Update both sendNotification paths (L681-689 SW and L692-703 direct Notification).",
+    "FIX foreign-match notification leak: in updateScoreboard/sendMatchNotification, guard with `isTurkishTeam(match.team1)||isTurkishTeam(match.team2)` before dispatching browser/push notification.",
+    "Mobile scoreboard: add responsive font-size / ellipsis for long team names <=390px viewport.",
+    "BİLDİRİM button: surface explicit feedback when Notification.permission === 'denied'.",
+    "Investigate single 404 resource request on load (likely asset missing)."
+  ],
+
+  "critical_code_review_comments": [
+    "app.js is 1616 lines — violates file-size guideline (>700). Split into modules: video/hls, scoreboard, notifications, matchCenter, serverSelector, adRotation.",
+    "SERVER_ALTERNATIVES map uses the same primary URL twice + apple test stream (e.g. `[STREAMS.trt1, STREAMS.trt1, STREAMS.apple]`). Fallbacks should point to genuinely different backups, not duplicates.",
+    "sendNotification and sendMatchAlert have overlapping responsibilities — consolidate.",
+    "Scoreboard match-selection logic (416-522) has deeply nested branches and mutates 6 module-level variables; candidate for state-machine refactor.",
+    "fetchLiveScore falls through to /api/scores/live (backend Türkiye-Romanya fallback) but never rechecks tomorrow's matches — add tomorrow-lookup branch.",
+    "TURKISH_TEAMS list in backend (server.py) and turkTeams list in app.js are duplicated and slightly divergent — consolidate to a single source served from backend.",
+    "WebSocket /api/ws/scores exists but pytest suite skipped WS test (needs websockets client). Suggest adding ws smoke-test in next iteration.",
+    "checkMatchEvents iterates evts twice (once for live events, once for FT) — can be unified.",
+    "Goal-scorer detection `s1 > (totalGoals - s2 - (totalGoals - prev.goals)) ? t1 : t2` (L271) is mathematically obscure/incorrect; should compare (s1 - prev.s1) vs (s2 - prev.s2)."
+  ],
+
+  "updated_files": [
+    "/app/backend/tests/test_banbansports_api.py",
+    "/app/test_reports/iteration_8.json",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+
+  "success_rate": {"backend": "100%", "frontend": "60%"},
+
+  "seed_data_creation": "None (read-only public APIs)",
+
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "Backend is solid (8/8 pytest). Focus on verifying frontend fixes: (1) scoreboard rolls to tomorrow's top Turkish match when today done, (2) Sunucu 3 no longer requests devstreaming-cdn.apple.com/.../bipbop..., verify via page.on('request'), (3) notification icons differ by type — inspect reg.showNotification call args or in-app alert markup, (4) mobile 390px scoreboard text fits. Use [data-testid='match-minute'], [data-testid='server-2'], [data-testid='notif-toggle']. Backend WS endpoint /api/ws/scores untested.",
+
+  "rca_of_the_issue": {
+    "scoreboard_stuck": "app.js fetchLiveScore L484-488 branch `impFinished && !liveTurkMatch` calls updateScoreboard(importantMatch) unconditionally — no tomorrow fallback, so finished Galatasaray match persists indefinitely.",
+    "sunucu_3_bipbop": "SERVER_ALTERNATIVES[channelKey][2] === STREAMS.apple (app.js L57-62). STREAMS.apple = Apple's public bipbop test-pattern HLS (`img_bipbop_adv_example_fmp4/master.m3u8`). Network trace of Sunucu 3 click: 1 m3u8 hit, exactly that URL.",
+    "static_push_icon": "sendNotification (L675-703) hard-codes icon:'tsl_logo.png' & badge:'tsl_logo.png' in both SW and fallback Notification branches regardless of `type`.",
+    "foreign_notification_risk": "updateScoreboard→sendMatchNotification fires whenever scoreboard updates; when bigLeagueMatch fallback kicks in (no Turkish candidates), users get notified for non-Turkish matches."
+  }
+}
