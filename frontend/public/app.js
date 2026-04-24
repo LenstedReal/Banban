@@ -71,16 +71,15 @@
     };
 
     // ============================================
-    // REKLAM SİSTEMİ - 4 Farklı Video (HEPSİ MOBİL OYUN, video-URL eşleşmesi doğrulandı)
+    // REKLAM SİSTEMİ - 3 Mobil Oyun (video-URL eşleşmesi doğrulandı, PC reklamlar kaldırıldı)
     // ============================================
     var ADS = [
         { name: 'PUBG MOBILE', url: 'https://play.google.com/store/apps/details?id=com.tencent.ig', color: '#FF6600', vid: 'ad_pubg' },
         { name: 'eFootball', url: 'https://play.google.com/store/apps/details?id=jp.konami.pesam', color: '#0066FF', vid: 'ad_efootball' },
-        { name: 'Call of Duty Mobile', url: 'https://play.google.com/store/apps/details?id=com.activision.callofduty.shooter', color: '#00CC44', vid: 'ad_cod' },
         { name: 'Lords Mobile', url: 'https://play.google.com/store/apps/details?id=com.igg.android.lordsmobile', color: '#CC0000', vid: 'ad_lords' }
     ];
-    function shuffleAds(){var a=ADS.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}sessionStorage.setItem('bb_ads',JSON.stringify(a));sessionStorage.setItem('bb_adi','0');sessionStorage.setItem('bb_adv','4v2_'+ADS.map(function(x){return x.name;}).join('|'));return a;}
-    function getAds(){var expected='4v2_'+ADS.map(function(x){return x.name;}).join('|');var v=sessionStorage.getItem('bb_adv');if(v!==expected){return shuffleAds();}var s=sessionStorage.getItem('bb_ads');return s?JSON.parse(s):shuffleAds();}
+    function shuffleAds(){var a=ADS.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}sessionStorage.setItem('bb_ads',JSON.stringify(a));sessionStorage.setItem('bb_adi','0');sessionStorage.setItem('bb_adv','3v1_'+ADS.map(function(x){return x.name;}).join('|'));return a;}
+    function getAds(){var expected='3v1_'+ADS.map(function(x){return x.name;}).join('|');var v=sessionStorage.getItem('bb_adv');if(v!==expected){return shuffleAds();}var s=sessionStorage.getItem('bb_ads');return s?JSON.parse(s):shuffleAds();}
     function getAd(){var ads=getAds();var i=parseInt(sessionStorage.getItem('bb_adi')||'0');if(i>=ads.length)i=0;return ads[i];}
     function nextAd(){var ads=getAds();var i=parseInt(sessionStorage.getItem('bb_adi')||'0')+1;if(i>=ads.length)i=0;sessionStorage.setItem('bb_adi',String(i));}
 
@@ -606,7 +605,9 @@
                     // Big league: ülke MUTLAKA büyük Avrupa listesinden olmalı + lig adı bigLeagueNames'den
                     var isBigCountry = bigCountries.some(function(c){return cl.includes(c);});
                     var isBigLeagueName = bigLeagueNames.some(function(k){return sl.includes(k);});
-                    var isBigL = isBigCountry && isBigLeagueName;
+                    // U18/U19/U21/U23/youth/reserve/women/w/B takımı dışarıda kalsın
+                    var isYouthOrReserve = /\bu18\b|\bu19\b|\bu20\b|\bu21\b|\bu23\b|youth|reserve|women|\bw\b|\b2nd\b/i.test(sn);
+                    var isBigL = isBigCountry && isBigLeagueName && !isYouthOrReserve;
                     var evts = stg.Events||[];
                     for (var j = 0; j < evts.length; j++) {
                         var ev = evts[j];
@@ -702,16 +703,16 @@
                     if (liveTurkMatch) { cacheScoreboard(liveTurkMatch); updateScoreboard(liveTurkMatch); return; }
                 }
                 
-                // Türk maçı yok → önce yarınki Türk maçına bak, sonra bigLeague, sonra gizle
+                // Türk maçı yok → ÖNCE bugünkü büyük Avrupa ligi (canlı veya MAÇ ÖNÜ), sonra yarınki Türk maçı
                 hasLiveScoreData = true;
                 liveScoreChecked = true;
-                var tmr2 = await fetchTomorrowTurkishMatch();
-                if (tmr2) { cacheScoreboard(tmr2); updateScoreboard(tmr2); return; }
-                if (bigLeagueMatch && bigLeagueMatch.isLive) {
-                    // Sadece CANLI büyük Avrupa ligi maçı (başlamamış olanı göstermez)
+                if (bigLeagueMatch) {
+                    // Bugün büyük Avrupa ligi maçı varsa göster (Premier/LaLiga/Bundesliga/Serie A/Ligue 1)
                     cacheScoreboard(bigLeagueMatch); updateScoreboard(bigLeagueMatch); return;
                 }
-                // Hiçbir uygun maç yok → scoreboard'ı gizle (default göster yerine)
+                var tmr2 = await fetchTomorrowTurkishMatch();
+                if (tmr2) { cacheScoreboard(tmr2); updateScoreboard(tmr2); return; }
+                // Hiçbir uygun maç yok → scoreboard'ı gizle
                 hideScoreboard();
                 return;
             }
@@ -740,7 +741,7 @@
         if (mm) mm.style.opacity = '0';
     }
 
-    // === RAGGA OKTAY MÜZİK PLAYER (video alanından AYRI, sadece Hızlı Öfkeli 11 aktifken) ===
+    // === RAGGA OKTAY MÜZİK PLAYER (AUTO-PLAY YOK, kullanıcı Play'e basarsa çalar) ===
     function showRaggaPlayer() {
         var el = document.getElementById('raggaPlayer');
         if (!el) return;
@@ -763,15 +764,7 @@
         }
         a.addEventListener('play', _syncIcon);
         a.addEventListener('pause', _syncIcon);
-        // Oynatmayı dene
-        var p = a.play();
-        if (p && p.catch) {
-            p.catch(function(){
-                // autoplay engellendi - pause state sync
-                _syncIcon();
-            });
-        }
-        // Play/pause tıklaması
+        // Play/pause tıklaması (TEK INTERAKSIYON YOLU - otomatik oynamaz)
         if (!btn._raggaBound) {
             btn._raggaBound = true;
             btn.addEventListener('click', function(){
@@ -779,7 +772,7 @@
                 else { a.pause(); }
             });
         }
-        _syncIcon();
+        _syncIcon(); // Başta duraklamış durumda göster
     }
     function hideRaggaPlayer() {
         var el = document.getElementById('raggaPlayer');
@@ -789,7 +782,8 @@
         if (a) { try { a.pause(); a.currentTime = 0; } catch(e){} }
     }
 
-    // === PEAKY BLINDERS SPLASH - her kanal açılışında + reklam bitiminde gösterilen intro ===
+    // === KANAL GEÇİŞ SPLASH - her kanal açılışında + reklam bitiminde gösterilen intro ===
+    // Shelby play görseli ile aynı (kullanıcı isteği)
     function showPeakySplash(duration, onDone) {
         try {
             // Önceki splash varsa temizle
@@ -800,31 +794,17 @@
             var sp = document.createElement('div');
             sp.id = 'peakySplash';
             sp.setAttribute('data-testid', 'peaky-splash');
-            sp.style.cssText = 'position:absolute;inset:0;z-index:40;background:#000 center/cover no-repeat url("/peaky_splash.jpg");opacity:0;transition:opacity 0.35s ease;overflow:hidden;pointer-events:none;';
-            // Koyu vignette + alta doğru gradient (metin okunurluğu için)
-            var veil = document.createElement('div');
-            veil.style.cssText = 'position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%, transparent 0%, rgba(0,0,0,0.35) 70%, rgba(0,0,0,0.75) 100%);';
-            sp.appendChild(veil);
-            // Parıltılı banbansports markası + tagline (alt orta)
-            var lbl = document.createElement('div');
-            lbl.style.cssText = 'position:absolute;left:50%;bottom:36px;transform:translateX(-50%);font-family:Orbitron,sans-serif;text-align:center;pointer-events:none;';
-            lbl.innerHTML = '<div style="font-size:22px;font-weight:900;letter-spacing:4px;background:linear-gradient(90deg,#00f0ff,#ff00aa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-shadow:0 0 18px rgba(0,240,255,0.35);">banbansports</div>' +
-                           '<div style="font-size:10px;color:#e8d4b8;letter-spacing:6px;margin-top:4px;opacity:0.85;">UNDERGROUND HD · YAYIN HAZIRLANIYOR</div>';
-            sp.appendChild(lbl);
-            // CRT tarama çizgisi
-            var scan = document.createElement('div');
-            scan.style.cssText = 'position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,0.12) 0 1px,transparent 1px 3px);pointer-events:none;mix-blend-mode:multiply;';
-            sp.appendChild(scan);
+            // shelby.jpg'yi kullan, yüz ortada gözüksün (center 35%)
+            sp.style.cssText = 'position:absolute;inset:0;z-index:40;background:#000 center 35% / cover no-repeat url("/shelby.jpg");opacity:0;transition:opacity 0.25s ease;overflow:hidden;pointer-events:none;will-change:opacity;';
             wrap.appendChild(sp);
-            // Fade in
             requestAnimationFrame(function(){ sp.style.opacity = '1'; });
             setTimeout(function(){
                 sp.style.opacity = '0';
                 setTimeout(function(){
                     if (sp.parentNode) sp.parentNode.removeChild(sp);
                     if (onDone) onDone();
-                }, 360);
-            }, duration || 1200);
+                }, 250);
+            }, duration || 700); // Varsayılan 700ms - sıkıntı vermesin
         } catch(e) { if (onDone) onDone(); }
     }
 
@@ -1286,7 +1266,7 @@
         unmuteBtn.classList.toggle('hidden', !isMuted);
         updateQualityMenu([]);
         
-        // REKLAM badge - TIKLANABILIR + PROFESYONEL TASARIM
+        // REKLAM badge - TIKLANAMAZ (otomatik bitince Play Store'a yönlendirir)
         hideAdOverlay();
         var ov = document.createElement('div');
         ov.id = 'adOverlay';
@@ -1295,11 +1275,9 @@
             'background:linear-gradient(135deg,' + ad.color + 'ee 0%,rgba(170,0,255,0.92) 100%);' +
             'font-family:Orbitron,sans-serif;font-size:11px;font-weight:800;color:#fff;letter-spacing:3px;' +
             'border:1px solid rgba(255,255,255,0.45);box-shadow:0 4px 18px rgba(0,0,0,0.5),0 0 24px ' + ad.color + '80;' +
-            'cursor:pointer;user-select:none;display:flex;align-items:center;gap:10px;backdrop-filter:blur(4px);';
+            'user-select:none;display:flex;align-items:center;gap:10px;backdrop-filter:blur(4px);pointer-events:none;';
         ov.innerHTML = '<span style="width:7px;height:7px;background:#fff;border-radius:50%;box-shadow:0 0 8px #fff;animation:pulse 1.2s infinite;"></span>' +
-                       '<span>' + ad.name.toUpperCase() + '</span>' +
-                       '<span style="opacity:0.85;border-left:1px solid rgba(255,255,255,0.4);padding-left:10px;font-size:10px;font-weight:600;">OYNAMAK İÇİN TIKLA →</span>';
-        ov.onclick = function(e) { e.stopPropagation(); redirectToAppStore(ad); };
+                       '<span>REKLAM · ' + ad.name.toUpperCase() + '</span>';
         document.querySelector('.video-wrapper').appendChild(ov);
         
         // PREMIUM REKLAM BİLGİ BARI — sağ üst köşede geri sayım
@@ -1351,8 +1329,8 @@
             if (triggerRedirect === true) {
                 redirectToAppStore(ad);
             }
-            // PEAKY SPLASH - Reklam bitince (auto-tıklama sonrası yayın başlamadan önce) göster
-            showPeakySplash(1100, function() {
+            // KANAL GEÇİŞ SPLASH - Reklam bitince (auto-tıklama sonrası yayın başlamadan önce)
+            showPeakySplash(650, function() {
                 if (onComplete) onComplete();
             });
         }
@@ -1391,7 +1369,7 @@
         // PEAKY SPLASH - Her kanal açılışında (reklam öncesi 1.1 sn intro görseli)
         if (!skipPreroll && !_splashJustShown) {
             _splashJustShown = true;
-            showPeakySplash(1100, function() {
+            showPeakySplash(650, function() {
                 // Splash bitince normal akışa devam - skipSplash (skipPreroll değil!) ile
                 setupStream(skipPreroll); // skipPreroll hala false ama _splashJustShown=true olduğu için atlar
             });
@@ -1454,8 +1432,7 @@
             csWrap.innerHTML =
                 '<div style="position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,rgba(255,0,170,0.04) 0 2px,transparent 2px 18px);pointer-events:none;"></div>' +
                 '<div style="font-family:Orbitron,sans-serif;font-size:13px;letter-spacing:4px;color:var(--pink);text-shadow:0 0 12px var(--pink);margin-bottom:16px;animation:pulse 2s infinite;">● ' + (channel.name) + '</div>' +
-                '<div style="font-family:Orbitron,sans-serif;font-size:clamp(28px,5vw,56px);font-weight:900;letter-spacing:6px;background:linear-gradient(90deg,var(--cyan),var(--pink),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-shadow:0 0 30px rgba(0,240,255,0.3);text-align:center;padding:0 20px;">' + (channel.comingText || 'FRAGMAN YAKINDA') + '</div>' +
-                '<div style="margin-top:22px;font-family:VT323,monospace;font-size:14px;color:#888;letter-spacing:2px;">MÜZİK · AŞAĞIDA</div>';
+                '<div style="font-family:Orbitron,sans-serif;font-size:clamp(28px,5vw,56px);font-weight:900;letter-spacing:6px;background:linear-gradient(90deg,var(--cyan),var(--pink),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-shadow:0 0 30px rgba(0,240,255,0.3);text-align:center;padding:0 20px;">' + (channel.comingText || 'FRAGMAN YAKINDA') + '</div>';
             document.querySelector('.video-wrapper').appendChild(csWrap);
             // Ragga Oktay müzik barını GÖSTER ve çal
             try { showRaggaPlayer(); } catch(e) {}
@@ -1947,10 +1924,10 @@
         if (!video) return;
         isMuted = !isMuted;
         video.muted = isMuted;
-        if (!isMuted) {
-            video.volume = 0.7;
-            video.play().catch(function() {});
-        }
+        if (!isMuted && video.volume < 0.1) video.volume = 0.7;
+        // DİKKAT: video.play() BURADA ÇAĞIRILMAZ - muted toggle videoyu durdurmaz.
+        // Eğer video paused ise user togglePlay ile başlatmalı. Mobile autoplay policy
+        // sebebiyle ses açınca play() çağrısı bazı cihazlarda video'yu dondurup bırakıyordu.
         unmuteBtn.classList.toggle('hidden', !isMuted);
         document.getElementById('volumeSlider').value = isMuted ? 0 : Math.round(video.volume * 100);
         const icon = document.getElementById('muteIcon');
@@ -2741,10 +2718,35 @@
         document.querySelectorAll('.cc-btn').forEach(function(b) {
             b.classList.toggle('active', b.dataset.sub === curr);
         });
+        // Trigger üzerindeki mevcut dil etiketi
+        var lbl = document.getElementById('ccCurrentLabel');
+        if (lbl) {
+            lbl.textContent = curr === 'tr' ? 'Türkçe' : curr === 'en' ? 'English' : 'Altyazısız';
+        }
     }
     function initCcSelector() {
         document.querySelectorAll('.cc-btn').forEach(function(b) {
-            b.addEventListener('click', function() { setCcLang(b.dataset.sub, true); }); // userInitiated=true
+            b.addEventListener('click', function(e) {
+                e.stopPropagation();
+                setCcLang(b.dataset.sub, true);
+                // Menüyü kapat
+                var sel = document.getElementById('ccSelector');
+                if (sel) sel.classList.remove('open');
+            });
+        });
+        // Trigger butonu → menüyü aç/kapat
+        var trig = document.getElementById('ccTrigger');
+        if (trig) {
+            trig.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var sel = document.getElementById('ccSelector');
+                if (sel) sel.classList.toggle('open');
+            });
+        }
+        // Dışarı tıklama ile kapat
+        document.addEventListener('click', function() {
+            var sel = document.getElementById('ccSelector');
+            if (sel) sel.classList.remove('open');
         });
         updateCcUI();
     }
@@ -2857,21 +2859,6 @@
             });
         });
 
-        // FPS Sayacı (video üstünde, küçük)
-        var fpsEl = document.createElement('div');
-        fpsEl.id = 'fpsCounter';
-        fpsEl.style.cssText = 'position:absolute;top:15px;right:60px;z-index:15;font-family:VT323,monospace;font-size:12px;color:var(--green);opacity:0.6;pointer-events:none;text-shadow:0 0 4px rgba(0,255,136,0.5);';
-        document.querySelector('.video-wrapper').appendChild(fpsEl);
-        var fpsFrames = 0, fpsLast = performance.now();
-        function fpsLoop() {
-            fpsFrames++;
-            var now = performance.now();
-            if (now - fpsLast >= 1000) {
-                fpsEl.textContent = fpsFrames + ' FPS';
-                fpsFrames = 0;
-                fpsLast = now;
-            }
-            requestAnimationFrame(fpsLoop);
-        }
-        requestAnimationFrame(fpsLoop);
+        // FPS Sayacı KALDIRILDI - sürekli requestAnimationFrame döngüsü performans kaybı yaratıyordu
+        // (Kullanıcı bildirimi: "FPS düşüyor" → döngü kaldırıldı)
     });
