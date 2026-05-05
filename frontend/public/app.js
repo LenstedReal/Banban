@@ -16,10 +16,12 @@
     // ============================================
     const BACKEND_URL = (function() {
         const h = window.location.hostname;
+        // Vercel serverless: same-origin (/api/* handled by vercel.json rewrites)
         if (h.includes('vercel')) return '';
-        if (h.includes('emergentagent')) return window.location.origin;
+        // Local dev
         if (h === 'localhost' || h === '127.0.0.1') return 'http://localhost:8001';
-        return '';
+        // Preview/production: same-origin backend
+        return window.location.origin;
     })();
     const IS_STATIC = !BACKEND_URL;
 
@@ -55,36 +57,35 @@
         bein1: (BACKEND_URL || '') + '/api/bein/master.m3u8?video=' + encodeURIComponent(BEIN1_VIDEO) + '&audio=' + encodeURIComponent(BEIN1_AUDIO)
     };
 
-    // Sunucu yedekleri - distinct URL'ler (aynı URL tekrar denemeyecek)
+    // Sunucu yedekleri - Sunucu 1, 2 ve 3 hepsi aynı primary stream (kullanıcı talebi)
+    // Server 3 artık "bip bop" test ekranı göstermiyor, Server 2 ile aynı yayını veriyor.
     const SERVER_ALTERNATIVES = {
-        demo1: [STREAMS.sintel_mp4, STREAMS.mux_test, STREAMS.tears_of_steel],
-        demo2: [STREAMS.tears_of_steel, STREAMS.mux_test, STREAMS.akamai_eu],
-        demo3: [STREAMS.big_buck_bunny_mp4, STREAMS.mux_test, STREAMS.tears_of_steel],
-        trt1: [STREAMS.trt1, STREAMS.trt1, STREAMS.akamai_eu],
-        trthaber: [STREAMS.trthaber, STREAMS.trthaber, STREAMS.akamai_eu],
-        trtspor: [STREAMS.trtspor, STREAMS.trtspor, STREAMS.akamai_eu],
-        tv8: [STREAMS.tv8, STREAMS.tv8, STREAMS.akamai_eu],
-        bein1: [STREAMS.bein1, STREAMS.bein1, STREAMS.bein1_video]
+        demo1: [STREAMS.sintel_mp4, STREAMS.sintel_mp4, STREAMS.sintel_mp4],
+        demo2: [STREAMS.tears_of_steel, STREAMS.tears_of_steel, STREAMS.tears_of_steel],
+        demo3: [STREAMS.big_buck_bunny_mp4, STREAMS.big_buck_bunny_mp4, STREAMS.big_buck_bunny_mp4],
+        trt1: [STREAMS.trt1, STREAMS.trt1, STREAMS.trt1],
+        trthaber: [STREAMS.trthaber, STREAMS.trthaber, STREAMS.trthaber],
+        trtspor: [STREAMS.trtspor, STREAMS.trtspor, STREAMS.trtspor],
+        tv8: [STREAMS.tv8, STREAMS.tv8, STREAMS.tv8],
+        bein1: [STREAMS.bein1, STREAMS.bein1, STREAMS.bein1]
     };
 
     // ============================================
-    // REKLAM SİSTEMİ - 5 Farklı Video
+    // REKLAM SİSTEMİ - 3 Mobil Oyun (video-URL eşleşmesi doğrulandı, PC reklamlar kaldırıldı)
     // ============================================
     var ADS = [
         { name: 'PUBG MOBILE', url: 'https://play.google.com/store/apps/details?id=com.tencent.ig', color: '#FF6600', vid: 'ad_pubg' },
-        { name: 'eFootball 2026', url: 'https://play.google.com/store/apps/details?id=jp.konami.pesam', color: '#0066FF', vid: 'ad_efootball' },
-        { name: 'Destiny 2', url: 'https://play.google.com/store/apps/details?id=com.bungieinc.bungiemobile', color: '#9900FF', vid: 'ad_efcrossover' },
-        { name: 'Call of Duty: Warzone', url: 'https://play.google.com/store/apps/details?id=com.activision.callofduty.warzone', color: '#00CC44', vid: 'ad_cod' },
-        { name: 'Civilization VI', url: 'https://play.google.com/store/apps/details?id=com.aspyr.civ6', color: '#CC0000', vid: 'ad_lords' }
+        { name: 'eFootball', url: 'https://play.google.com/store/apps/details?id=jp.konami.pesam', color: '#0066FF', vid: 'ad_efootball' },
+        { name: 'Lords Mobile', url: 'https://play.google.com/store/apps/details?id=com.igg.android.lordsmobile', color: '#CC0000', vid: 'ad_lords' }
     ];
-    function shuffleAds(){var a=ADS.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}sessionStorage.setItem('bb_ads',JSON.stringify(a));sessionStorage.setItem('bb_adi','0');sessionStorage.setItem('bb_adv','5_'+ADS.map(function(x){return x.name;}).join('|'));return a;}
-    function getAds(){var expected='5_'+ADS.map(function(x){return x.name;}).join('|');var v=sessionStorage.getItem('bb_adv');if(v!==expected){return shuffleAds();}var s=sessionStorage.getItem('bb_ads');return s?JSON.parse(s):shuffleAds();}
+    function shuffleAds(){var a=ADS.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}sessionStorage.setItem('bb_ads',JSON.stringify(a));sessionStorage.setItem('bb_adi','0');sessionStorage.setItem('bb_adv','3v1_'+ADS.map(function(x){return x.name;}).join('|'));return a;}
+    function getAds(){var expected='3v1_'+ADS.map(function(x){return x.name;}).join('|');var v=sessionStorage.getItem('bb_adv');if(v!==expected){return shuffleAds();}var s=sessionStorage.getItem('bb_ads');return s?JSON.parse(s):shuffleAds();}
     function getAd(){var ads=getAds();var i=parseInt(sessionStorage.getItem('bb_adi')||'0');if(i>=ads.length)i=0;return ads[i];}
     function nextAd(){var ads=getAds();var i=parseInt(sessionStorage.getItem('bb_adi')||'0')+1;if(i>=ads.length)i=0;sessionStorage.setItem('bb_adi',String(i));}
 
     const CHANNELS = {
-        fastx: { name: 'HIZLI VE ÖFKELİ 10', status: 'online', isTrailer: true, isYoutube: true, youtubeId: '32RAq6JzY-w', isNew: true },
-        spiderman: { name: 'SPIDER-MAN: BRAND NEW DAY', status: 'online', isTrailer: true, isYoutube: true, youtubeId: 'JfVOs4VSpmA', isNew: true },
+        fastx: { name: 'HIZLI VE ÖFKELİ 11', status: 'online', isTrailer: true, isComingSoon: true, comingText: 'FRAGMAN YAKINDA', isNew: true },
+        spiderman: { name: 'SPIDER-MAN: BRAND NEW DAY', status: 'online', isTrailer: true, isLocalTrailer: true, localUrl: '/spiderman_trailer.mp4', isNew: true },
         trt1: { name: 'TRT 1', status: 'online', stream: STREAMS.trt1 },
         trthaber: { name: 'TRT HABER', status: 'online', stream: STREAMS.trthaber },
         tv8: { name: 'TV 8', status: 'online', stream: STREAMS.tv8 },
@@ -277,7 +278,17 @@
         try { localStorage.setItem('bb_last_match', JSON.stringify(match)); } catch(e) {}
     }
     function getCachedScoreboard() {
-        try { var s = localStorage.getItem('bb_last_match'); return s ? JSON.parse(s) : null; } catch(e) { return null; }
+        try {
+            var s = localStorage.getItem('bb_last_match');
+            if (!s) return null;
+            var m = JSON.parse(s);
+            // Alakasız cache'i temizle: Türk takımı veya Türkçe lig adı yoksa cache'i yok say
+            var text = ((m.team1||'')+' '+(m.team2||'')+' '+(m.league||'')).toLowerCase();
+            var hasTurk = turkishTeams.some(function(t){return text.includes(t.toLowerCase());}) ||
+                          /türk|trendyol|süper lig|şampiyon|ziraat/i.test(m.league||'');
+            if (!hasTurk) { try { localStorage.removeItem('bb_last_match'); } catch(e){} return null; }
+            return m;
+        } catch(e) { return null; }
     }
     // Sayfa açılırken cache'den yükle (internet gelmeden önce)
     var cached = getCachedScoreboard();
@@ -577,7 +588,9 @@
                 var data = await resp.json();
                 var stages = data.Stages || [];
                 var turkTeams = ['galatasaray','fenerbah','besiktas','beşiktaş','trabzonspor','kocaelispor','samsunspor','antalyaspor','alanyaspor','kayserispor','kasımpaşa','sivasspor','turkey','türkiye','istanbul','göztepe','eyüp','adana','karagümrük','karagumruk','gençlerbirliği','başakşehir','hatayspor','pendik','bodrum','sakaryaspor'];
-                var bigKeys = ['champions league','europa league','süper lig','super lig','1st lig','premier league','la liga','laliga','serie a','bundesliga','ligue 1'];
+                // SADECE gerçek büyük Avrupa ligleri (Singapore Premier League gibi alakasız ligleri dışarıda bırak)
+                var bigCountries = ['england','spain','germany','italy','france','turkiye','turkey','türkiye','europe','world','international','uefa'];
+                var bigLeagueNames = ['champions league','europa league','conference league','nations league','süper lig','super lig','bundesliga','la liga','laliga','premier league','serie a','ligue 1','world cup','euro'];
                 
                 var importantMatch = null; // Büyük Türk takım maçı (GS, FB, BJK, TS)
                 var importantPrio = 0;
@@ -589,8 +602,12 @@
                 for (var i = 0; i < stages.length; i++) {
                     var stg = stages[i], cn = stg.Cnm||'', sn = stg.Snm||'', cl = cn.toLowerCase(), sl = sn.toLowerCase();
                     var isTurkL = cl.includes('turk') || cl.includes('türk');
-                    var isBigL = bigKeys.some(function(k){return (sl+' '+cl).includes(k);});
-                    if ((sl+' '+cl).includes('caf') || cl.includes('asia') || (sl+' '+cl).includes('concacaf')) isBigL = false;
+                    // Big league: ülke MUTLAKA büyük Avrupa listesinden olmalı + lig adı bigLeagueNames'den
+                    var isBigCountry = bigCountries.some(function(c){return cl.includes(c);});
+                    var isBigLeagueName = bigLeagueNames.some(function(k){return sl.includes(k);});
+                    // U18/U19/U21/U23/youth/reserve/women/w/B takımı dışarıda kalsın
+                    var isYouthOrReserve = /\bu18\b|\bu19\b|\bu20\b|\bu21\b|\bu23\b|youth|reserve|women|\bw\b|\b2nd\b/i.test(sn);
+                    var isBigL = isBigCountry && isBigLeagueName && !isYouthOrReserve;
                     var evts = stg.Events||[];
                     for (var j = 0; j < evts.length; j++) {
                         var ev = evts[j];
@@ -615,7 +632,7 @@
                 scoreboardImportantMatch = importantMatch;
                 scoreboardLiveMatch = liveTurkMatch;
                 
-                if (importantMatch || liveTurkMatch || bigLeagueMatch) {
+                if (importantMatch || liveTurkMatch) {
                     hasLiveScoreData = true;
                     liveScoreChecked = true;
                     
@@ -639,31 +656,21 @@
                     
                     // 3. Önemli maç BİTTİ + canlı Türk maçı yok → yarınki en önemli Türk maçına geç
                     if (impFinished && !liveTurkMatch) {
-                        // Module-level timer (localStorage yerine) - session reset edildiğinde yeniden başlar
                         var matchKey = (importantMatch.team1 || '') + '-' + (importantMatch.team2 || '');
                         if (!window._ftTimestamps) window._ftTimestamps = {};
                         if (!window._ftTimestamps[matchKey]) window._ftTimestamps[matchKey] = Date.now();
                         var elapsed = Date.now() - window._ftTimestamps[matchKey];
-                        // İlk 5 dakika biten maç sonucu göster
                         if (elapsed < 5 * 60 * 1000) {
                             cacheScoreboard(importantMatch);
                             updateScoreboard(importantMatch);
                             return;
                         }
-                        // 5dk sonra yarınki Türk maçına geç
                         var tmr = await fetchTomorrowTurkishMatch();
                         if (tmr) {
                             cacheScoreboard(tmr);
                             updateScoreboard(tmr);
                             return;
                         }
-                        // Yarın Türk maçı yoksa bigLeague fallback
-                        if (bigLeagueMatch) {
-                            cacheScoreboard(bigLeagueMatch);
-                            updateScoreboard(bigLeagueMatch);
-                            return;
-                        }
-                        // Hiçbir alternatif yoksa biten maçı göster
                         cacheScoreboard(importantMatch);
                         updateScoreboard(importantMatch);
                         return;
@@ -694,9 +701,20 @@
                     if (importantMatch) { cacheScoreboard(importantMatch); updateScoreboard(importantMatch); return; }
                     // 6. Sadece canlı Türk maçı
                     if (liveTurkMatch) { cacheScoreboard(liveTurkMatch); updateScoreboard(liveTurkMatch); return; }
-                    // 7. Büyük lig fallback
-                    if (bigLeagueMatch) { cacheScoreboard(bigLeagueMatch); updateScoreboard(bigLeagueMatch); return; }
                 }
+                
+                // Türk maçı yok → ÖNCE bugünkü büyük Avrupa ligi (canlı veya MAÇ ÖNÜ), sonra yarınki Türk maçı
+                hasLiveScoreData = true;
+                liveScoreChecked = true;
+                if (bigLeagueMatch) {
+                    // Bugün büyük Avrupa ligi maçı varsa göster (Premier/LaLiga/Bundesliga/Serie A/Ligue 1)
+                    cacheScoreboard(bigLeagueMatch); updateScoreboard(bigLeagueMatch); return;
+                }
+                var tmr2 = await fetchTomorrowTurkishMatch();
+                if (tmr2) { cacheScoreboard(tmr2); updateScoreboard(tmr2); return; }
+                // Hiçbir uygun maç yok → scoreboard'ı gizle
+                hideScoreboard();
+                return;
             }
         } catch(e){console.log('LiveScore API hatası:',e);}
         try{if(BACKEND_URL){var r=await fetch(BACKEND_URL+'/api/scores/live');if(r.ok){updateScoreboard(await r.json());liveScoreChecked=true;return;}}}catch(e){}
@@ -711,6 +729,83 @@
             updateScoreboard(cached);
         }
         // Cache de yoksa boş bırak (Türkiye-Romanya gösterme)
+    }
+
+    function hideScoreboard() {
+        // Önemli/uygun maç yokken scoreboard'u gizle (alakasız maç göstermektense)
+        var li = document.getElementById('leagueInfo');
+        var tc = document.getElementById('teamsContainer');
+        var mm = document.getElementById('matchMinute');
+        if (li) li.style.opacity = '0';
+        if (tc) tc.style.opacity = '0';
+        if (mm) mm.style.opacity = '0';
+    }
+
+    // === RAGGA OKTAY MÜZİK PLAYER (AUTO-PLAY YOK, kullanıcı Play'e basarsa çalar) ===
+    function showRaggaPlayer() {
+        var el = document.getElementById('raggaPlayer');
+        if (!el) return;
+        el.style.display = 'block';
+        var a = document.getElementById('ragOktayAudio');
+        var btn = document.getElementById('raggaPlayBtn');
+        var icon = document.getElementById('raggaPlayIcon');
+        var bars = document.getElementById('raggaBars');
+        if (!a) return;
+        a.volume = 0.5;
+        a.muted = false;
+        function _syncIcon() {
+            if (a.paused) {
+                icon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+                if (bars) bars.style.opacity = '0.35';
+            } else {
+                icon.innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
+                if (bars) bars.style.opacity = '1';
+            }
+        }
+        a.addEventListener('play', _syncIcon);
+        a.addEventListener('pause', _syncIcon);
+        // Play/pause tıklaması (TEK INTERAKSIYON YOLU - otomatik oynamaz)
+        if (!btn._raggaBound) {
+            btn._raggaBound = true;
+            btn.addEventListener('click', function(){
+                if (a.paused) { a.muted = false; a.play().catch(function(){}); }
+                else { a.pause(); }
+            });
+        }
+        _syncIcon(); // Başta duraklamış durumda göster
+    }
+    function hideRaggaPlayer() {
+        var el = document.getElementById('raggaPlayer');
+        if (!el) return;
+        el.style.display = 'none';
+        var a = document.getElementById('ragOktayAudio');
+        if (a) { try { a.pause(); a.currentTime = 0; } catch(e){} }
+    }
+
+    // === KANAL GEÇİŞ SPLASH - her kanal açılışında + reklam bitiminde gösterilen intro ===
+    // Shelby play görseli ile aynı (kullanıcı isteği)
+    function showPeakySplash(duration, onDone) {
+        try {
+            // Önceki splash varsa temizle
+            var old = document.getElementById('peakySplash');
+            if (old) old.remove();
+            var wrap = document.querySelector('.video-wrapper');
+            if (!wrap) { if (onDone) onDone(); return; }
+            var sp = document.createElement('div');
+            sp.id = 'peakySplash';
+            sp.setAttribute('data-testid', 'peaky-splash');
+            // shelby.jpg'yi kullan, yüz ortada gözüksün (center 35%)
+            sp.style.cssText = 'position:absolute;inset:0;z-index:40;background:#000 center 35% / cover no-repeat url("/shelby.jpg");opacity:0;transition:opacity 0.25s ease;overflow:hidden;pointer-events:none;will-change:opacity;';
+            wrap.appendChild(sp);
+            requestAnimationFrame(function(){ sp.style.opacity = '1'; });
+            setTimeout(function(){
+                sp.style.opacity = '0';
+                setTimeout(function(){
+                    if (sp.parentNode) sp.parentNode.removeChild(sp);
+                    if (onDone) onDone();
+                }, 250);
+            }, duration || 700); // Varsayılan 700ms - sıkıntı vermesin
+        } catch(e) { if (onDone) onDone(); }
     }
 
     function updateScoreboard(match) {
@@ -935,14 +1030,21 @@
     // ============================================
     function initChannelTabs() {
         document.querySelectorAll('.channel-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
+            tab.addEventListener('click', (e) => {
+                // REKLAM OYNUYORSA: kanal değişimini TAMAMEN engelle (görsel dahil)
+                if (_prerollActive) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showInAppNotification('REKLAM OYNUYOR', 'Reklam bittiğinde kanal değişebilirsin.', 'info');
+                    return;
+                }
                 const channel = tab.dataset.channel;
                 document.querySelectorAll('.channel-tab').forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
                 currentChannel = channel;
                 currentServerIndex = 0;
                 updateServerUI();
-                
+
                 const ch = CHANNELS[channel];
                 if (!ch || ch.status === 'maintenance') {
                     if (hls) { try { hls.destroy(); } catch(e){} hls = null; }
@@ -958,6 +1060,21 @@
         });
     }
 
+    // Reklam oynarken kanal tabs'ını görsel olarak kilitli göster
+    function setChannelTabsLocked(locked) {
+        document.querySelectorAll('.channel-tab').forEach(function(t) {
+            if (locked) {
+                t.style.opacity = '0.4';
+                t.style.cursor = 'not-allowed';
+                t.setAttribute('aria-disabled', 'true');
+            } else {
+                t.style.opacity = '';
+                t.style.cursor = '';
+                t.removeAttribute('aria-disabled');
+            }
+        });
+    }
+
     // ============================================
     // STREAM SETUP
     // ============================================
@@ -967,6 +1084,8 @@
     var _prerollActive = false;
     var _prerollMaxTimer = null;
     var _prerollSessionId = 0;
+    var _adCountdownTimer = null;
+    var _splashJustShown = false; // Peaky splash flag (her kanal açılışında 1 kez)
 
     // ============================================
     // i18n - TR/EN (kullanıcı Türkiye dışındaysa İngilizce)
@@ -1059,22 +1178,42 @@
         // Ad URL'den package name çıkar
         var match = url.match(/[?&]id=([^&]+)/);
         var pkg = match ? match[1] : '';
+        var ua = (navigator.userAgent || '').toLowerCase();
+        var isAndroid = /android/i.test(ua);
+        var isIOS = /iphone|ipad|ipod/.test(ua);
+        var isMobile = isAndroid || isIOS;
+
         if (!pkg) {
-            // Fallback: direk URL'yi aç
-            try { window.open(url, '_blank'); } catch(e) {}
+            // Package yoksa sadece URL'yi aç
+            try { window.location.href = url; } catch(e) {}
             return;
         }
+
         var deepLink = getAppStoreUrl(pkg);
-        // Intent deep link dene, başarısız olursa browser'da Play Store URL'si
-        try {
-            var tempFrame = document.createElement('iframe');
-            tempFrame.style.display = 'none';
-            tempFrame.src = deepLink;
-            document.body.appendChild(tempFrame);
-            setTimeout(function() { tempFrame.remove(); }, 500);
-        } catch(e) {}
-        // 1.5sn sonra browser fallback (deep link uygulaması yoksa)
-        setTimeout(function() { window.open(url, '_blank'); }, 1500);
+
+        // MOBILE: direkt location.href ile deep link → popup block yok
+        if (isMobile) {
+            // Intent scheme ile dene (Android'de Play Store app açılır; yoksa browser Play Store URL'ye fallback)
+            if (isAndroid) {
+                // Android intent: Play Store app yoksa fallback=url açar
+                var intentUrl = 'intent://details?id=' + pkg +
+                    '#Intent;scheme=market;package=com.android.vending;S.browser_fallback_url=' +
+                    encodeURIComponent(url) + ';end';
+                try { window.location.href = intentUrl; return; } catch(e) {}
+            }
+            // iOS & Huawei & Xiaomi: doğrudan deep link
+            try { window.location.href = deepLink; } catch(e) {}
+            // Fallback 1.5sn sonra (uygulama yoksa Play Store webine)
+            setTimeout(function() {
+                try { window.location.href = url; } catch(e) {}
+            }, 1500);
+            return;
+        }
+
+        // DESKTOP: yeni sekmede Play Store web sayfasını aç
+        try { window.open(url, '_blank'); } catch(e) {
+            try { window.location.href = url; } catch(ee) {}
+        }
     }
 
     // Pre-roll reklam: kanal başlamadan önce oyun reklamı, ATLAMA YOK, bitince yayın başlar
@@ -1082,6 +1221,7 @@
         _prerollActive = true;
         _prerollSessionId++;
         var mySession = _prerollSessionId;
+        setChannelTabsLocked(true); // Reklam sırasında kanal değişimini kilitle
         
         // Eski timer temizle
         if (_prerollMaxTimer) { clearTimeout(_prerollMaxTimer); _prerollMaxTimer = null; }
@@ -1103,40 +1243,66 @@
         
         var ad = getAd();
         nextAd();
+        // YT iframe'den geçilmişse video gizli kalmış olabilir - görünür yap
+        video.style.display = '';
+        var _oldYt = document.getElementById('ytIframe');
+        if (_oldYt) _oldYt.remove();
         video.loop = false;
         video.muted = isMuted;
         video.style.filter = 'none';
         video.src = ad.vid + '.webm';
         video.onerror = function() { video.onerror = null; video.src = ad.vid + '.mp4'; };
-        video.play().catch(function(){});
+        var _adPlay = video.play();
+        if (_adPlay && _adPlay.catch) {
+            _adPlay.catch(function() {
+                // Autoplay engellendi - muted fallback, unmute butonu göster
+                video.muted = true;
+                isMuted = true;
+                video.play().catch(function(){});
+                if (unmuteBtn) unmuteBtn.classList.remove('hidden');
+            });
+        }
         isPlaying = true;
         unmuteBtn.classList.toggle('hidden', !isMuted);
         updateQualityMenu([]);
         
-        // REKLAM badge - tıklanabilir, Play Store'a gider
+        // REKLAM badge - TIKLANAMAZ (otomatik bitince Play Store'a yönlendirir)
         hideAdOverlay();
         var ov = document.createElement('div');
         ov.id = 'adOverlay';
         ov.setAttribute('data-testid', 'preroll-overlay');
-        ov.style.cssText = 'position:absolute;top:15px;left:60px;z-index:20;padding:8px 16px;background:linear-gradient(135deg,'+ad.color+'ee,rgba(170,0,255,0.9));font-family:Orbitron,sans-serif;font-size:12px;font-weight:700;color:#fff;letter-spacing:2px;border:1px solid rgba(255,255,255,0.4);box-shadow:0 0 20px '+ad.color+'80;cursor:pointer;';
-        ov.textContent = 'REKLAM - ' + ad.name + ' (TIKLA)';
-        ov.onclick = function() { window.open(ad.url, '_blank'); };
+        ov.style.cssText = 'position:absolute;top:15px;left:60px;z-index:22;padding:9px 18px;' +
+            'background:linear-gradient(135deg,' + ad.color + 'ee 0%,rgba(170,0,255,0.92) 100%);' +
+            'font-family:Orbitron,sans-serif;font-size:11px;font-weight:800;color:#fff;letter-spacing:3px;' +
+            'border:1px solid rgba(255,255,255,0.45);box-shadow:0 4px 18px rgba(0,0,0,0.5),0 0 24px ' + ad.color + '80;' +
+            'user-select:none;display:flex;align-items:center;gap:10px;backdrop-filter:blur(4px);pointer-events:none;';
+        ov.innerHTML = '<span style="width:7px;height:7px;background:#fff;border-radius:50%;box-shadow:0 0 8px #fff;animation:pulse 1.2s infinite;"></span>' +
+                       '<span>REKLAM · ' + ad.name.toUpperCase() + '</span>';
         document.querySelector('.video-wrapper').appendChild(ov);
         
-        // Yayın başlıyor göstergesi (sağda, sadece bilgi amaçlı)
-        var info = document.createElement('div');
-        info.id = 'prerollInfo';
-        info.setAttribute('data-testid', 'preroll-info');
-        info.style.cssText = 'position:absolute;top:15px;right:15px;z-index:25;padding:8px 14px;background:rgba(0,0,0,0.75);color:var(--cyan);font-family:VT323,monospace;font-size:12px;border:1px solid var(--cyan);letter-spacing:1px;';
-        info.textContent = 'YAYIN BAŞLIYOR...';
-        document.querySelector('.video-wrapper').appendChild(info);
+        // PREMIUM REKLAM BİLGİ BARI — sağ üst köşede geri sayım
+        var adWait = document.createElement('div');
+        adWait.id = 'adWaitBar';
+        adWait.setAttribute('data-testid', 'ad-wait-bar');
+        adWait.style.cssText = 'position:absolute;top:15px;right:140px;z-index:22;padding:8px 14px 8px 12px;' +
+            'background:linear-gradient(90deg,rgba(8,4,14,0.88) 0%,rgba(20,8,30,0.88) 100%);' +
+            'border:1px solid rgba(0,240,255,0.35);' +
+            'box-shadow:0 4px 16px rgba(0,0,0,0.5),inset 0 0 20px rgba(0,240,255,0.08);' +
+            'font-family:Orbitron,sans-serif;font-size:10px;color:#b8e8ff;letter-spacing:2px;' +
+            'display:flex;align-items:center;gap:10px;backdrop-filter:blur(6px);';
+        adWait.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="var(--cyan)" style="flex-shrink:0;"><circle cx="12" cy="12" r="10" fill="none" stroke="var(--cyan)" stroke-width="1.8"/><path d="M12 6v6l4 2" stroke="var(--cyan)" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>' +
+                           '<div style="display:flex;flex-direction:column;line-height:1.2;">' +
+                             '<span style="color:var(--cyan);font-size:9px;opacity:0.75;">YAYIN HAZIRLANIYOR</span>' +
+                             '<span style="font-size:13px;font-weight:700;color:#fff;letter-spacing:1.5px;">Reklam <span id="adCountdown">--</span> sn</span>' +
+                           '</div>' +
+                           '<div style="flex-shrink:0;width:44px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;margin-left:6px;">' +
+                             '<div id="adProgress" style="height:100%;width:0%;background:linear-gradient(90deg,var(--cyan),var(--pink));transition:width 0.3s linear;"></div>' +
+                           '</div>';
+        document.querySelector('.video-wrapper').appendChild(adWait);
         
-        // Ekran tıklaması da Play Store'a yönlendirsin
-        var adClickLayer = document.createElement('div');
-        adClickLayer.id = 'prerollClickLayer';
-        adClickLayer.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:50px;z-index:15;cursor:pointer;';
-        adClickLayer.onclick = function() { window.open(ad.url, '_blank'); };
-        document.querySelector('.video-wrapper').appendChild(adClickLayer);
+        // Tıklama engel katmanı KALDIRILDI
+        // (Video zaten browser controls'sız, clickLayer ses butonunu/CC'yi blokluyordu - kritik bug)
+        // Reklam atlama zaten playPrerollAd mantığıyla engelleniyor, ayrıca overlay gerekmez.
         
         var MAX_AD_DURATION = 60000; // 60sn güvenlik limiti (reklam hang durumunda)
         var done = false;
@@ -1147,29 +1313,50 @@
             if (mySession !== _prerollSessionId) { done = true; return; }
             done = true;
             if (_prerollMaxTimer) { clearTimeout(_prerollMaxTimer); _prerollMaxTimer = null; }
+            if (_adCountdownTimer) { clearInterval(_adCountdownTimer); _adCountdownTimer = null; }
             hideAdOverlay();
             var el = document.getElementById('prerollInfo');
             if (el) el.remove();
             var cl = document.getElementById('prerollClickLayer');
             if (cl) cl.remove();
+            var wb = document.getElementById('adWaitBar');
+            if (wb) wb.remove();
             video.onended = null;
             video.onerror = null;
             _prerollActive = false;
+            setChannelTabsLocked(false); // Reklam bitti, kanallar tıklanabilir
             // Reklam sonuna kadar oynadıysa auto-redirect (user action flag user click = aslında natural end)
             if (triggerRedirect === true) {
                 redirectToAppStore(ad);
             }
-            if (onComplete) onComplete();
+            // KANAL GEÇİŞ SPLASH - Reklam bitince (auto-tıklama sonrası yayın başlamadan önce)
+            showPeakySplash(650, function() {
+                if (onComplete) onComplete();
+            });
         }
         
         // Reklam bitince (video.onended) otomatik store'a yönlendir + yayına geç
         video.onended = function() { finish(true); };
+        
+        // Canlı geri sayım - reklam süresi boyunca kalan saniye + ilerleme çubuğu
+        if (_adCountdownTimer) { clearInterval(_adCountdownTimer); }
+        _adCountdownTimer = setInterval(function() {
+            if (mySession !== _prerollSessionId) { clearInterval(_adCountdownTimer); _adCountdownTimer = null; return; }
+            var dur = (isFinite(video.duration) && video.duration > 0) ? video.duration : 30;
+            var cur = video.currentTime || 0;
+            var remaining = Math.max(0, Math.ceil(dur - cur));
+            var cd = document.getElementById('adCountdown');
+            var pg = document.getElementById('adProgress');
+            if (cd) cd.textContent = remaining;
+            if (pg) pg.style.width = Math.min(100, (cur / dur) * 100) + '%';
+        }, 300);
         
         // Güvenlik: video yüklenmezse veya çok uzunsa zaman sonra geç (redirect YOK - ortada kesilmiş)
         _prerollMaxTimer = setTimeout(function() { finish(false); }, MAX_AD_DURATION);
     }
 
     function setupStream(skipPreroll) {
+        let loadTimeout; // TDZ fix: YT branch'inde kullanılmadan önce tanımlı olmalı
         const channel = CHANNELS[currentChannel];
         if (!channel || channel.status === 'maintenance') { showMaintenance(); return; }
 
@@ -1178,6 +1365,17 @@
             showInAppNotification('REKLAM OYNUYOR', 'Reklamın bitmesini bekleyin, sonra kanal değişir.', 'info');
             return;
         }
+
+        // PEAKY SPLASH - Her kanal açılışında (reklam öncesi 1.1 sn intro görseli)
+        if (!skipPreroll && !_splashJustShown) {
+            _splashJustShown = true;
+            showPeakySplash(650, function() {
+                // Splash bitince normal akışa devam - skipSplash (skipPreroll değil!) ile
+                setupStream(skipPreroll); // skipPreroll hala false ama _splashJustShown=true olduğu için atlar
+            });
+            return;
+        }
+        _splashJustShown = false; // Bir sonraki kanal değişiminde splash tekrar gösterilebilsin
 
         // Eski YouTube iframe varsa kaldır
         var oldIframe = document.getElementById('ytIframe');
@@ -1214,29 +1412,138 @@
         if (_pInfo) _pInfo.remove();
         var _pClick = document.getElementById('prerollClickLayer');
         if (_pClick) _pClick.remove();
+        // Ragga Oktay müzik barını gizle (sadece fastx açıkken görünür)
+        if (!channel.isComingSoon) { try { hideRaggaPlayer(); } catch(e){} }
         isPlaying = false;
         retryCount = 0;
         streamSessionId++; // Eski callback'leri geçersiz kıl
+        stopMidrollTimer(); // Kanal değişiminde eski mid-roll timer'ı iptal et
         const mySession = streamSessionId;
 
-        // YOUTUBE IFRAME branch (Fast X, Spider-Man trailer)
-        if (channel.isYoutube && channel.youtubeId) {
+        // "YAKINDA" placeholder branch (resmi fragman henüz yok)
+        if (channel.isComingSoon) {
             clearTimeout(loadTimeout);
             video.style.display = 'none';
             loadingOverlay.classList.add('hidden');
+            var csWrap = document.createElement('div');
+            csWrap.id = 'ytIframe'; // aynı cleanup kullanabilsin
+            csWrap.setAttribute('data-testid', 'coming-soon');
+            csWrap.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:5;background:radial-gradient(ellipse at center, #180828 0%, #050208 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;';
+            csWrap.innerHTML =
+                '<div style="position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,rgba(255,0,170,0.04) 0 2px,transparent 2px 18px);pointer-events:none;"></div>' +
+                '<div style="font-family:Orbitron,sans-serif;font-size:13px;letter-spacing:4px;color:var(--pink);text-shadow:0 0 12px var(--pink);margin-bottom:16px;animation:pulse 2s infinite;">● ' + (channel.name) + '</div>' +
+                '<div style="font-family:Orbitron,sans-serif;font-size:clamp(28px,5vw,56px);font-weight:900;letter-spacing:6px;background:linear-gradient(90deg,var(--cyan),var(--pink),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-shadow:0 0 30px rgba(0,240,255,0.3);text-align:center;padding:0 20px;">' + (channel.comingText || 'FRAGMAN YAKINDA') + '</div>';
+            document.querySelector('.video-wrapper').appendChild(csWrap);
+            // Ragga Oktay müzik barını GÖSTER ve çal
+            try { showRaggaPlayer(); } catch(e) {}
+            statusText.textContent = 'YAKINDA';
+            statusBadge.className = 'live-badge';
+            isPlaying = false;
+            return;
+        }
+
+        // LOKAL TRAILER branch (self-hosted MP4, sıfır external branding)
+        if (channel.isLocalTrailer && channel.localUrl) {
+            clearTimeout(loadTimeout);
+            loadingOverlay.classList.add('hidden');
+            // YT iframe wrapper'ı kullan (aynı cleanup mantığı)
+            var ltWrap = document.createElement('div');
+            ltWrap.id = 'ytIframe';
+            ltWrap.setAttribute('data-testid', 'local-trailer');
+            ltWrap.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:5;background:#000;overflow:hidden;';
+            var ltVideo = document.createElement('video');
+            ltVideo.setAttribute('playsinline','');
+            ltVideo.setAttribute('controls','');
+            ltVideo.src = channel.localUrl;
+            ltVideo.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;background:#000;';
+            ltVideo.muted = isMuted;
+            ltVideo.autoplay = true;
+            // Altyazı (VTT) varsa ekle
+            var ccCur = (function(){ try { return localStorage.getItem('bb_sub_lang') || 'tr'; } catch(e){ return 'tr'; } })();
+            if (channel.subtitles) {
+                channel.subtitles.forEach(function(sub) {
+                    var tr = document.createElement('track');
+                    tr.kind = 'subtitles';
+                    tr.label = sub.label;
+                    tr.srclang = sub.lang;
+                    tr.src = sub.url;
+                    if (ccCur !== 'off' && sub.lang === ccCur) tr.default = true;
+                    ltVideo.appendChild(tr);
+                });
+            }
+            ltWrap.appendChild(ltVideo);
+            // Film başlığı (kendi markamız)
+            var ltBrand = document.createElement('div');
+            ltBrand.style.cssText = 'position:absolute;top:18px;left:22px;z-index:4;font-family:Orbitron,sans-serif;font-size:14px;font-weight:700;color:var(--cyan);letter-spacing:2.5px;text-shadow:0 0 10px rgba(0,240,255,0.7);pointer-events:none;';
+            ltBrand.textContent = '● ' + channel.name;
+            ltWrap.appendChild(ltBrand);
+            document.querySelector('.video-wrapper').appendChild(ltWrap);
+            video.style.display = 'none';
+            statusText.textContent = 'TRAİLER';
+            statusBadge.className = 'live-badge';
+            isPlaying = true;
+            _tryNextCycle = 0;
+            ltVideo.play().catch(function(){});
+            return;
+        }
+
+        // YOUTUBE IFRAME branch (trailer kanalları)
+        if ((channel.isYoutube && channel.youtubeId) || (channel.isDailymotion && channel.dmId)) {
+            clearTimeout(loadTimeout);
+            video.style.display = 'none';
+            loadingOverlay.classList.add('hidden');
+            // Wrapper: iframe + overlay (platform title/logo gizleme)
+            var ytWrap = document.createElement('div');
+            ytWrap.id = 'ytIframe';
+            ytWrap.setAttribute('data-testid', 'yt-iframe');
+            ytWrap.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:5;background:#000;overflow:hidden;';
             var iframe = document.createElement('iframe');
-            iframe.id = 'ytIframe';
-            iframe.setAttribute('data-testid', 'yt-iframe');
-            iframe.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;border:0;z-index:5;';
-            // Altyazı: Türkçe otomatik çeviri (cc_lang_pref=tr), açık (cc_load_policy=1)
-            var ytLang = window._siteLang || 'tr';
-            var ytUrl = 'https://www.youtube.com/embed/' + channel.youtubeId +
-                '?autoplay=1&mute=1&controls=1&rel=0&modestbranding=1&playsinline=1' +
-                '&cc_load_policy=1&cc_lang_pref=' + ytLang + '&hl=' + ytLang;
-            iframe.src = ytUrl;
+            iframe.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;border:0;';
+            // Altyazı: kullanıcının seçtiği dil (localStorage'dan), yoksa site dili
+            var ytLang = (function(){ try { return localStorage.getItem('bb_sub_lang') || (window._siteLang || 'tr'); } catch(e){ return 'tr'; } })();
+            var ccOn = (ytLang !== 'off');
+            var useLang = ccOn ? ytLang : 'tr';
+            var embedUrl;
+            if (channel.isDailymotion) {
+                // Dailymotion - kendi branding'ini gizle (ui-logo=0, ui-start-screen-info=0)
+                embedUrl = 'https://www.dailymotion.com/embed/video/' + channel.dmId +
+                    '?autoplay=1&mute=1&ui-logo=0&ui-start-screen-info=0&ui-highlight=00f0ff&queue-enable=0&sharing-enable=0&endscreen-enable=0' +
+                    '&subtitles-default=' + (ccOn ? useLang : '');
+            } else {
+                embedUrl = 'https://www.youtube-nocookie.com/embed/' + channel.youtubeId +
+                    '?autoplay=1&mute=1&controls=1&rel=0&modestbranding=1&playsinline=1' +
+                    '&iv_load_policy=3&fs=1&disablekb=0' +
+                    '&cc_load_policy=' + (ccOn?'1':'0') + '&cc_lang_pref=' + useLang + '&hl=' + useLang +
+                    '&playlist=' + channel.youtubeId + '&loop=1';
+            }
+            iframe.src = embedUrl;
             iframe.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
-            iframe.allowFullscreen = true;
-            document.querySelector('.video-wrapper').appendChild(iframe);
+            iframe.setAttribute('allowfullscreen', 'true');
+            ytWrap.appendChild(iframe);
+            // TOP overlay - tüm başlık bar'ını tamamen gizle (mute/close gibi butonlar yok zaten)
+            var ytTopCover = document.createElement('div');
+            ytTopCover.style.cssText = 'position:absolute;top:0;left:0;right:0;height:72px;background:linear-gradient(180deg,#000 0%,#000 70%,transparent 100%);z-index:2;pointer-events:none;';
+            ytWrap.appendChild(ytTopCover);
+            // BOTTOM-RIGHT - "Watch on YouTube / Dailymotion" logo
+            var ytLogoCover = document.createElement('div');
+            ytLogoCover.style.cssText = 'position:absolute;bottom:28px;right:0;width:160px;height:60px;background:#000;z-index:2;pointer-events:none;border-top-left-radius:2px;';
+            ytWrap.appendChild(ytLogoCover);
+            // BOTTOM-LEFT (Dailymotion başlık/info kısmı)
+            var ytBLCover = document.createElement('div');
+            ytBLCover.style.cssText = 'position:absolute;bottom:28px;left:0;width:55px;height:50px;background:#000;z-index:2;pointer-events:none;';
+            ytWrap.appendChild(ytBLCover);
+            // Video bitiminde "related videos" grid'ini gizle (YouTube rel=0 yetmiyor bazen)
+            var ytEndCover = document.createElement('div');
+            ytEndCover.id = 'ytEndCover';
+            ytEndCover.style.cssText = 'position:absolute;top:72px;left:0;right:0;bottom:80px;background:transparent;z-index:1;pointer-events:none;';
+            ytWrap.appendChild(ytEndCover);
+            // Film başlığı overlay (kendi markamız)
+            var ytBrand = document.createElement('div');
+            ytBrand.style.cssText = 'position:absolute;top:18px;left:22px;z-index:4;font-family:Orbitron,sans-serif;font-size:14px;font-weight:700;color:var(--cyan);letter-spacing:2.5px;text-shadow:0 0 10px rgba(0,240,255,0.6);pointer-events:none;';
+            ytBrand.textContent = '● ' + channel.name;
+            ytWrap.appendChild(ytBrand);
+
+            document.querySelector('.video-wrapper').appendChild(ytWrap);
             statusText.textContent = 'TRAİLER';
             statusBadge.className = 'live-badge';
             isPlaying = true;
@@ -1248,7 +1555,7 @@
         video.style.display = '';
 
         // Loading timeout - 15s sonra hala yüklenemezse hata göster
-        const loadTimeout = setTimeout(() => {
+        loadTimeout = setTimeout(() => {
             if (!loadingOverlay.classList.contains('hidden')) {
                 loadingOverlay.classList.add('hidden');
                 tryNextServer();
@@ -1270,7 +1577,7 @@
                 video.onerror = null;
                 video.src = ad.vid + '.mp4';
             };
-            video.onended = function() { window.open(ad.url, '_blank'); };
+            video.onended = function() { redirectToAppStore(ad); };
             video.load();
             video.play().catch(function() {});
             isPlaying = true;
@@ -1280,9 +1587,8 @@
             hideAdOverlay();
             var ov = document.createElement('div'); ov.id = 'adOverlay';
             ov.setAttribute('data-testid', 'ad-overlay');
-            ov.style.cssText = 'position:absolute;top:15px;left:60px;z-index:20;padding:8px 16px;background:linear-gradient(135deg,'+ad.color+'ee,rgba(170,0,255,0.9));font-family:Orbitron,sans-serif;font-size:12px;font-weight:700;color:#fff;letter-spacing:2px;border:1px solid rgba(255,255,255,0.4);box-shadow:0 0 20px '+ad.color+'80;cursor:pointer;';
-            ov.textContent = 'REKLAM - ' + ad.name;
-            ov.onclick = function() { window.open(ad.url, '_blank'); };
+            ov.style.cssText = 'position:absolute;top:15px;left:60px;z-index:20;padding:8px 16px;background:linear-gradient(135deg,'+ad.color+'ee,rgba(170,0,255,0.9));font-family:Orbitron,sans-serif;font-size:12px;font-weight:700;color:#fff;letter-spacing:2px;border:1px solid rgba(255,255,255,0.4);box-shadow:0 0 20px '+ad.color+'80;pointer-events:none;';
+            ov.textContent = 'REKLAM · ' + ad.name;
             document.querySelector('.video-wrapper').appendChild(ov);
             return;
         }
@@ -1337,6 +1643,7 @@
                 updateSubtitles();
                 updateConnectionIcon();
                 updateQualityMenu([]);
+                startMidrollTimer(); // Canlı yayın başladı, mid-roll reklam timer'ı kur
             }, { once: true });
             video.addEventListener('error', function onErr() {
                 video.removeEventListener('error', onErr);
@@ -1376,6 +1683,7 @@
                 startCrashDetection();
                 updateConnectionIcon();
                 updateQualityMenu(hls.levels || []);
+                startMidrollTimer(); // Canlı yayın başladı, mid-roll reklam timer'ı kur
                 // Reklam kanalıysa overlay göster
                 if (CHANNELS[currentChannel] && CHANNELS[currentChannel].isAd) { hideAdOverlay(); }
             });
@@ -1479,8 +1787,49 @@
         retryCount = 0;
         updateServerUI();
         if (hls) { try { hls.destroy(); } catch(e){} hls = null; }
+        // Sunucuya göre otomatik dil/altyazı (kullanıcı manuel seçim yapmadıysa)
+        try {
+            var sl = window.getServerLang ? window.getServerLang(index) : null;
+            var userSet = false;
+            try { userSet = !!localStorage.getItem('bb_sub_lang_user_set'); } catch(e){}
+            if (sl && !userSet) {
+                setCcLang(sl.ccOn ? sl.sub : 'off');
+            }
+            var label = (index === 0) ? 'SUNUCU 1 · TR ses + TR altyazı'
+                : (index === 1) ? 'SUNUCU 2 · EN ses (altyazısız)'
+                : 'SUNUCU 3 (EU) · EN ses + EN altyazı';
+            if (typeof showInAppNotification === 'function') {
+                showInAppNotification('SUNUCU DEĞİŞTİ', label, 'info');
+            }
+        } catch(e) {}
         setupStream(true); // Manuel sunucu geçişinde preroll atla
     };
+
+    // ============================================
+    // MID-ROLL REKLAM (YouTube tarzı, her 17 dakikada bir)
+    // ============================================
+    var _midrollTimer = null;
+    var MIDROLL_INTERVAL = 17 * 60 * 1000; // 17 dakika
+    function startMidrollTimer() {
+        stopMidrollTimer();
+        _midrollTimer = setTimeout(function tick() {
+            var ch = CHANNELS[currentChannel];
+            // Sadece canlı yayınlarda (trailer/coming-soon/maintenance değil) ve preroll yoksa
+            var isLive = ch && !ch.isTrailer && !ch.isYoutube && !ch.isComingSoon && ch.status !== 'maintenance';
+            if (isLive && !_prerollActive && isPlaying) {
+                playPrerollAd(function() {
+                    setupStream(true); // Reklam sonrası yayını geri başlat
+                    startMidrollTimer(); // Sıradaki reklam için timer
+                });
+            } else {
+                // Koşullar uygun değilse 17 dk sonra tekrar kontrol et
+                startMidrollTimer();
+            }
+        }, MIDROLL_INTERVAL);
+    }
+    function stopMidrollTimer() {
+        if (_midrollTimer) { clearTimeout(_midrollTimer); _midrollTimer = null; }
+    }
 
     // ============================================
     // SUBTITLES
@@ -1503,19 +1852,41 @@
     // OVERLAYS
     // ============================================
     function showStreamError() {
+        // YAYIN HATASI - freeze gibi auto-retry mesajı göster (bakım moduna girme)
         loadingOverlay.classList.add('hidden');
         maintenanceOverlay.classList.add('hidden');
-        errorOverlay.classList.remove('hidden');
+        errorOverlay.classList.add('hidden');
         hideAdOverlay();
+        // Mevcut freeze overlay varsa tekrar oluşturma
+        if (document.getElementById('freezeOverlay')) return;
+        const div = document.createElement('div');
+        div.id = 'freezeOverlay';
+        div.className = 'freeze-overlay';
+        div.setAttribute('data-testid', 'stream-retry-overlay');
+        div.onclick = () => { hideFreezeOverlay(); retryStream(); };
+        div.innerHTML = '<svg width="56" height="56" viewBox="0 0 24 24" fill="var(--cyan)"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg><div class="freeze-text">YAYIN YENİLENİYOR</div><div class="freeze-sub">Bekle veya tıkla, otomatik bağlanıyor...</div>';
+        document.querySelector('.video-wrapper').appendChild(div);
+        // 8 saniye sonra otomatik yeniden dene
+        if (_freezeAutoRetryTimer) clearTimeout(_freezeAutoRetryTimer);
+        _freezeAutoRetryTimer = setTimeout(() => {
+            _freezeAutoRetryTimer = null;
+            if (document.getElementById('freezeOverlay')) {
+                hideFreezeOverlay();
+                _tryNextCycle = 0;
+                retryStream();
+            }
+        }, 8000);
     }
 
     function showMaintenance() {
         loadingOverlay.classList.add('hidden');
         errorOverlay.classList.add('hidden');
+        hideFreezeOverlay();
         maintenanceOverlay.classList.remove('hidden');
         statusBadge.className = 'live-badge maintenance';
         statusText.textContent = 'BAKIM';
         hideAdOverlay();
+        stopMidrollTimer(); // Bakım modunda mid-roll timer'ı durdur
     }
 
     function showAdOverlay() { /* inline olarak taşındı */ }
@@ -1553,10 +1924,10 @@
         if (!video) return;
         isMuted = !isMuted;
         video.muted = isMuted;
-        if (!isMuted) {
-            video.volume = 0.7;
-            video.play().catch(function() {});
-        }
+        if (!isMuted && video.volume < 0.1) video.volume = 0.7;
+        // DİKKAT: video.play() BURADA ÇAĞIRILMAZ - muted toggle videoyu durdurmaz.
+        // Eğer video paused ise user togglePlay ile başlatmalı. Mobile autoplay policy
+        // sebebiyle ses açınca play() çağrısı bazı cihazlarda video'yu dondurup bırakıyordu.
         unmuteBtn.classList.toggle('hidden', !isMuted);
         document.getElementById('volumeSlider').value = isMuted ? 0 : Math.round(video.volume * 100);
         const icon = document.getElementById('muteIcon');
@@ -1610,51 +1981,75 @@
     }
 
     function startCast() {
-        var tried = false;
-        // 1. Remote Playback API (Cast/AirPlay/DIAL cihazlarını bulur)
+        var ua = (navigator.userAgent || '').toLowerCase();
+        var isAndroid = /android/i.test(ua);
+        var isIOS = /iphone|ipad|ipod/.test(ua);
+        var isXiaomi = /miui|xiaomi|redmi|poco/.test(ua);
+
+        // 1. iOS/Safari AirPlay
+        if (isIOS && video.webkitShowPlaybackTargetPicker) {
+            try { video.webkitShowPlaybackTargetPicker(); return; } catch(e) {}
+        }
+
+        // 2. Remote Playback API (Chromecast/DIAL/AirPlay) — en iyi seçenek
         if (video.remote && typeof video.remote.prompt === 'function') {
-            tried = true;
-            video.remote.prompt().catch(function() {
-                // 2. Fallback: Presentation API
-                if (navigator.presentation && navigator.presentation.defaultRequest) {
-                    try { navigator.presentation.defaultRequest.start().catch(function(){}); } catch(e) {}
-                }
+            video.remote.prompt().then(function() {
+                showInAppNotification('CAST BAĞLANDI', 'TV\'de yansıtma başlatıldı.', 'info');
+            }).catch(function() {
+                tryCastFallbacks();
             });
             return;
         }
-        // 3. iOS/Safari webkit
-        if (video.webkitShowPlaybackTargetPicker) {
-            tried = true;
-            try { video.webkitShowPlaybackTargetPicker(); } catch(e) {}
-            return;
-        }
-        // 4. Chrome Cast API (eğer global cast framework yüklendiyse)
+
+        // 3. Chrome Cast API (global cast framework)
         if (window.cast && window.cast.framework) {
             try {
                 var ctx = window.cast.framework.CastContext.getInstance();
                 ctx.requestSession();
-                tried = true;
                 return;
             } catch(e) {}
         }
-        // 5. Presentation API
+
+        // 4. Presentation API (DIAL)
         if (navigator.presentation && navigator.presentation.defaultRequest) {
-            try {
-                navigator.presentation.defaultRequest.start().catch(function(){});
-                tried = true;
-                return;
-            } catch(e) {}
+            try { navigator.presentation.defaultRequest.start().catch(function(){ tryCastFallbacks(); }); return; } catch(e) {}
         }
-        // 6. Android intent fallback (Cast ayarlarına yönlendir)
-        if (/android/i.test(navigator.userAgent)) {
-            try {
-                window.location.href = 'intent:#Intent;action=android.settings.CAST_SETTINGS;end';
-                tried = true;
-            } catch(e) {}
-            return;
-        }
-        if (!tried) {
-            showInAppNotification('CAST KULLANILAMIYOR', 'Bu tarayıcı ya da cihaz yansıtma desteklemiyor. Chrome/Edge deneyin.', 'info');
+
+        tryCastFallbacks();
+
+        function tryCastFallbacks() {
+            // Android: Miracast / CAST ayarları intent
+            if (isAndroid) {
+                // Xiaomi/MIUI: Mi Cast intent
+                if (isXiaomi) {
+                    try {
+                        var xiaomiIntent = 'intent://#Intent;action=miui.intent.action.CAST_SETTINGS;end';
+                        window.location.href = xiaomiIntent;
+                        setTimeout(function() {
+                            // Fallback: generic Android Cast settings
+                            window.location.href = 'intent:#Intent;action=android.settings.CAST_SETTINGS;end';
+                        }, 800);
+                        return;
+                    } catch(e) {}
+                }
+                // Generic Android Cast settings
+                try {
+                    window.location.href = 'intent:#Intent;action=android.settings.CAST_SETTINGS;end';
+                    setTimeout(function() {
+                        // Ikinci deneme: Wireless Display settings
+                        try { window.location.href = 'intent:#Intent;action=android.settings.WIFI_DISPLAY_SETTINGS;end'; } catch(e){}
+                    }, 800);
+                    return;
+                } catch(e) {}
+            }
+            // Web Share fallback (URL kopyalamak için)
+            if (navigator.share) {
+                try {
+                    navigator.share({ title: 'banbansports UNDERGROUND HD', url: window.location.href });
+                    return;
+                } catch(e) {}
+            }
+            showInAppNotification('YANSITMA', 'Chromecast veya AirPlay destekli bir TV gerekli. Bluetooth hoparlörler video yansıtamaz (sadece ses için OS ayarlarını kullanın).', 'info');
         }
     }
 
@@ -1925,25 +2320,27 @@
                     const leagueNameLower = leagueName.toLowerCase();
                     const combined = (leagueNameLower + ' ' + countryLower);
                     
-                    if ((countryLower.includes('turk') || countryLower.includes('türk')) && (leagueNameLower.includes('süper') || leagueNameLower.includes('super lig'))) {
+                    if ((countryLower.includes('turk') || countryLower.includes('türk')) && (leagueNameLower.includes('süper') || leagueNameLower.includes('super lig')) && !leagueNameLower.includes('women')) {
                         matchedLeague = leagueName; matchedLeagueId = '4339';
-                    } else if ((countryLower.includes('turk') || countryLower.includes('türk')) && (leagueNameLower.includes('cup') || leagueNameLower.includes('kupa'))) {
+                    } else if ((countryLower.includes('turk') || countryLower.includes('türk')) && (leagueNameLower.includes('cup') || leagueNameLower.includes('kupa')) && !leagueNameLower.includes('women') && !leagueNameLower.includes('kadın') && !leagueNameLower.includes('u19') && !leagueNameLower.includes('u21') && !leagueNameLower.includes('youth') && !leagueNameLower.includes('futsal')) {
                         matchedLeague = leagueName; matchedLeagueId = 'trcup';
-                    } else if (combined.includes('champions league') && !combined.includes('afc') && !combined.includes('caf') && !combined.includes('asia') && !combined.includes('concacaf')) {
+                    } else if (combined.includes('champions league') && !combined.includes('afc') && !combined.includes('caf') && !combined.includes('asia') && !combined.includes('concacaf') && !combined.includes('women') && !combined.includes('youth') && !combined.includes('u19') && !combined.includes('u20') && !combined.includes('u21')) {
                         matchedLeague = leagueName + ' (' + country + ')'; matchedLeagueId = '4480';
-                    } else if (combined.includes('europa league') && !combined.includes('asia')) {
+                    } else if (combined.includes('europa league') && !combined.includes('asia') && !combined.includes('women') && !combined.includes('youth') && !combined.includes('u19') && !combined.includes('u20') && !combined.includes('u21')) {
                         matchedLeague = leagueName + ' (' + country + ')'; matchedLeagueId = '4480';
-                    } else if (leagueNameLower.includes('serie a') && countryLower.includes('ital')) {
+                    } else if (leagueNameLower === 'serie a' && countryLower.includes('ital')) {
                         matchedLeague = leagueName; matchedLeagueId = '4332';
-                    } else if (leagueNameLower.includes('bundesliga') && countryLower.includes('german')) {
+                    } else if (leagueNameLower === 'bundesliga' && countryLower.includes('german')) {
+                        // SADECE üst lig - "2. Bundesliga", "Frauen-Bundesliga", "Bundesliga 2" hariç
                         matchedLeague = leagueName; matchedLeagueId = '4331';
-                    } else if (leagueNameLower.includes('laliga') && countryLower.includes('spain')) {
+                    } else if (leagueNameLower === 'laliga' && countryLower.includes('spain')) {
+                        // SADECE üst lig - "LaLiga 2" hariç
                         matchedLeague = leagueName; matchedLeagueId = '4335';
-                    } else if (leagueNameLower.includes('copa del rey') && countryLower.includes('spain')) {
+                    } else if (leagueNameLower === 'copa del rey' && countryLower.includes('spain')) {
                         matchedLeague = leagueName; matchedLeagueId = '4335';
                     } else if (leagueNameLower === 'premier league' && countryLower.includes('england')) {
                         matchedLeague = leagueName; matchedLeagueId = '4328';
-                    } else if (leagueNameLower.includes('ligue 1') && countryLower.includes('france')) {
+                    } else if (leagueNameLower === 'ligue 1' && countryLower.includes('france')) {
                         matchedLeague = leagueName; matchedLeagueId = 'ligue1';
                     }
                     
@@ -2264,6 +2661,151 @@
     window.setupStream = setupStream;
     window.filterLeague = filterLeague;
     window.retryStream = retryStream;
+
+    // ============================================
+    // GLOBAL ALTYAZI CC SEÇİCİ (tüm kanallar)
+    // ============================================
+    function getCcLang() {
+        try { return localStorage.getItem('bb_sub_lang') || (window._siteLang || 'tr'); } catch(e){ return 'tr'; }
+    }
+    function setCcLang(lang, userInitiated) {
+        try { localStorage.setItem('bb_sub_lang', lang); } catch(e){}
+        // Kullanıcı manuel değiştirdiyse flag ayarla (sunucu değişiminde override edilmesin)
+        if (userInitiated) {
+            try { localStorage.setItem('bb_sub_lang_user_set', '1'); } catch(e){}
+        }
+        updateCcUI();
+        // Aktif iframe (YT veya Dailymotion) varsa src'yi yenile
+        var ytWrap = document.getElementById('ytIframe');
+        var iframe = ytWrap ? ytWrap.querySelector('iframe') : null;
+        var ch = CHANNELS[currentChannel];
+        if (iframe && ch) {
+            var ccOn = (lang !== 'off');
+            var useLang = ccOn ? lang : 'tr';
+            if (ch.isDailymotion && ch.dmId) {
+                iframe.src = 'https://www.dailymotion.com/embed/video/' + ch.dmId +
+                    '?autoplay=1&mute=' + (isMuted?'1':'0') + '&ui-logo=0&ui-start-screen-info=0&ui-highlight=00f0ff&queue-enable=0&sharing-enable=0&endscreen-enable=0' +
+                    '&subtitles-default=' + (ccOn ? useLang : '');
+            } else if (ch.isYoutube && ch.youtubeId) {
+                iframe.src = 'https://www.youtube-nocookie.com/embed/' + ch.youtubeId +
+                    '?autoplay=1&mute=' + (isMuted?'1':'0') + '&controls=1&rel=0&modestbranding=1&playsinline=1' +
+                    '&iv_load_policy=3&fs=1' +
+                    '&cc_load_policy=' + (ccOn?'1':'0') + '&cc_lang_pref=' + useLang + '&hl=' + useLang +
+                    '&playlist=' + ch.youtubeId + '&loop=1';
+            }
+        }
+        // Video textTracks: OFF seçiliyse TÜM track'leri tamamen disable (eski hata: 'disabled' mode'u bazı tarayıcılarda göstermeye devam edebiliyor)
+        if (video && video.textTracks) {
+            for (var i = 0; i < video.textTracks.length; i++) {
+                var tr = video.textTracks[i];
+                if (lang === 'off') {
+                    tr.mode = 'disabled';
+                    // CSS fallback: track DOM elementini de display:none yap
+                    try {
+                        var trackEls = video.querySelectorAll('track');
+                        trackEls.forEach(function(t){ t.style.display = 'none'; t.removeAttribute('default'); });
+                    } catch(e){}
+                } else if (tr.language === lang || (tr.language||'').toLowerCase().startsWith(lang)) {
+                    tr.mode = 'showing';
+                } else {
+                    tr.mode = 'disabled';
+                }
+            }
+        }
+    }
+    function updateCcUI() {
+        var curr = getCcLang();
+        document.querySelectorAll('.cc-btn').forEach(function(b) {
+            b.classList.toggle('active', b.dataset.sub === curr);
+        });
+        // Trigger üzerindeki mevcut dil etiketi
+        var lbl = document.getElementById('ccCurrentLabel');
+        if (lbl) {
+            lbl.textContent = curr === 'tr' ? 'Türkçe' : curr === 'en' ? 'English' : 'Altyazısız';
+        }
+    }
+    function initCcSelector() {
+        document.querySelectorAll('.cc-btn').forEach(function(b) {
+            b.addEventListener('click', function(e) {
+                e.stopPropagation();
+                setCcLang(b.dataset.sub, true);
+                // Menüyü kapat
+                var sel = document.getElementById('ccSelector');
+                if (sel) sel.classList.remove('open');
+            });
+        });
+        // Trigger butonu → menüyü aç/kapat
+        var trig = document.getElementById('ccTrigger');
+        if (trig) {
+            trig.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var sel = document.getElementById('ccSelector');
+                if (sel) sel.classList.toggle('open');
+            });
+        }
+        // Dışarı tıklama ile kapat
+        document.addEventListener('click', function() {
+            var sel = document.getElementById('ccSelector');
+            if (sel) sel.classList.remove('open');
+        });
+        updateCcUI();
+    }
+
+    // ============================================
+    // SHELBY BAŞLATMA EKRANI (autoplay yerine user-click)
+    // ============================================
+    var _sessionStarted = false;
+    function initStartScreen() {
+        var startOv = document.getElementById('startOverlay');
+        var playBtn = document.getElementById('shelbyPlayBtn');
+        if (!startOv || !playBtn) return;
+        function startSession(e) {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            if (_sessionStarted) return;
+            _sessionStarted = true;
+            startOv.classList.add('hidden');
+            // Autoplay policy unlock: user gesture'la video'ya doğrudan dokun, audio context unlock et
+            try {
+                // 1. Video.muted=false set et (user gesture içinde)
+                video.muted = false;
+                isMuted = false;
+                if (unmuteBtn) unmuteBtn.classList.add('hidden');
+                // 2. Boş bir play().pause() ile audio unlock
+                var _unlock = video.play();
+                if (_unlock && _unlock.then) {
+                    _unlock.then(function(){ video.pause(); }).catch(function(){
+                        // Autoplay engellendi - muted kalabilir, unmute göster
+                        video.muted = true;
+                        isMuted = true;
+                        if (unmuteBtn) unmuteBtn.classList.remove('hidden');
+                    });
+                }
+                // 3. AudioContext unlock (şarkı için)
+                try {
+                    var _ac = new (window.AudioContext || window.webkitAudioContext)();
+                    if (_ac.state === 'suspended') _ac.resume();
+                } catch(err2){}
+                // 4. Start screen Shelby zaten gösterildi → setupStream ilk çağrısında splash atla (çift Shelby önlenir)
+                _splashJustShown = true;
+            } catch(err) {}
+            setupStream();
+        }
+        playBtn.addEventListener('click', startSession);
+        // Ekranın herhangi bir yerine tıklamak da başlatır
+        startOv.addEventListener('click', startSession);
+    }
+
+    // ============================================
+    // SUNUCU DİL HARİTASI
+    // Sunucu 1: İngilizce ses + Türkçe altyazı
+    // Sunucu 2: Türkçe dublaj (ses) + altyazısız
+    // Sunucu 3 (EU): İngilizce ses + İngilizce altyazı
+    // ============================================
+    window.getServerLang = function(serverIdx) {
+        if (serverIdx === 0) return { audio: 'en', sub: 'tr', ccOn: true };   // S1: EN audio + TR CC
+        if (serverIdx === 1) return { audio: 'tr', sub: 'off', ccOn: false }; // S2: TR dublaj
+        return { audio: 'en', sub: 'en', ccOn: true };                         // S3 (EU): EN + EN CC
+    };
     
     document.addEventListener('DOMContentLoaded', () => {
         // Video event listeners - play/pause senkronizasyonu
@@ -2275,7 +2817,9 @@
         applyI18n();
         
         initChannelTabs();
-        setupStream();
+        // AUTOPLAY YOK - Shelby başlatma ekranı gösterilir, kullanıcı play'e tıklayınca setupStream başlar
+        initStartScreen();
+        initCcSelector(); // Global altyazı TR/EN/OFF seçici
         connectWebSocket();
         updateConnectionIcon();
         fetchAllMatches();
@@ -2317,21 +2861,6 @@
             });
         });
 
-        // FPS Sayacı (video üstünde, küçük)
-        var fpsEl = document.createElement('div');
-        fpsEl.id = 'fpsCounter';
-        fpsEl.style.cssText = 'position:absolute;top:15px;right:60px;z-index:15;font-family:VT323,monospace;font-size:12px;color:var(--green);opacity:0.6;pointer-events:none;text-shadow:0 0 4px rgba(0,255,136,0.5);';
-        document.querySelector('.video-wrapper').appendChild(fpsEl);
-        var fpsFrames = 0, fpsLast = performance.now();
-        function fpsLoop() {
-            fpsFrames++;
-            var now = performance.now();
-            if (now - fpsLast >= 1000) {
-                fpsEl.textContent = fpsFrames + ' FPS';
-                fpsFrames = 0;
-                fpsLast = now;
-            }
-            requestAnimationFrame(fpsLoop);
-        }
-        requestAnimationFrame(fpsLoop);
+        // FPS Sayacı KALDIRILDI - sürekli requestAnimationFrame döngüsü performans kaybı yaratıyordu
+        // (Kullanıcı bildirimi: "FPS düşüyor" → döngü kaldırıldı)
     });

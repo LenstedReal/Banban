@@ -1,96 +1,65 @@
 # banbansports UNDERGROUND HD - PRD
 
 ## Proje Tanımı
-Canlı spor yayını platformu. Retro-futuristik cyberpunk tasarımlı, çoklu kanal destekli, canlı skor takipli web uygulaması.
+Canlı spor yayını platformu. Retro-futuristik cyberpunk tasarımlı, çoklu kanal destekli, canlı skor takipli web uygulaması. Vercel'de deploy edilebilir (vercel-deploy/ klasörü hazır).
 
-## Session 3 - 23 Nisan 2026 (Ultra Derin Tarama + Kullanıcı Talepleri)
+## Repo
+- GitHub: https://github.com/LenstedReal/Banban
+- Vercel preview: https://banbansports978.vercel.app
 
-### Testing Agent ile tespit edilen bugler (iteration_9.json)
-Tüm 20 bug matrix kontrol edildi, 6 major + 3 minor düzeltildi.
+## Son Yapılan İşler (5 Mayıs 2026)
+1. **GitHub'tan tüm proje çekildi** - önceki agent'ın sponsor logo + sp-* positioned absolute layout düzenlemesi tamamen alındı
+2. **Vercel-deploy senkronize edildi**:
+   - app.js, index.html /app/frontend/public/ ile aynı
+   - 36 sponsor logosu logos/ klasöründe
+   - icons/ + VTT subtitle dosyaları sync
+3. **vercel.json güncellendi** - date param, tomorrow, image cache headers
+4. **livescore.js Vercel function** - date ve day query params desteği eklendi
 
-### Yapılan Ana Düzeltmeler (Son session)
+## Mevcut Yapı
+```
+/app/
+├── frontend/public/
+│   ├── app.js (2866 satır)
+│   ├── index.html (1153 satır)
+│   ├── logos/ (36 sponsor PNG)
+│   ├── icons/ (8 bildirim ikonu PNG)
+│   └── ad_*.mp4/.webm (oyun reklamları)
+├── backend/
+│   └── server.py (550 satır - FastAPI + LiveScore proxy + WebSocket)
+└── vercel-deploy/  (Vercel'e bağımsız deploy için)
+    ├── index.html, app.js (frontend ile sync)
+    ├── api/livescore.js, api/bein-master.js (Vercel functions)
+    └── vercel.json
+```
 
-1. **Kanal isimleri** (DEMO → TRAILER)
-   - demo1 → SİNTEL TRAILER (lokal /sintel.mp4, 4.2MB Blender Sintel trailer)
-   - demo2 → TEARS OF STEEL TRAILER (TR altyazılı, unified-streaming HLS)
-   - demo3 → BIG BUCK BUNNY TRAILER (EN altyazılı, lokal /demo3.mp4 5MB)
-   - REKLAM kanalı kaldırıldı
+## Aktif Özellikler
+- ✅ HIZLI VE ÖFKELİ 11 + SPIDER-MAN: BND trailer kanalları (NEW badge ile)
+- ✅ TRT 1, TRT HABER, TV 8, TRT SPOR, beIN SPORTS 1, S Sport, GS TV, FB TV, ATV, A SPOR
+- ✅ Sponsor positioned-absolute layout (Meritking ortada, Heineken kırmızı yıldız, RedBull, Samsung, Vodafone, Trendyol, Pepsi vb. 36 marka)
+- ✅ Maç merkezi (Süper Lig + Türkiye Kupası + Avrupa ligler, TFF 1./2.Lig HARİÇ)
+- ✅ Lig isimleri Türkçe (Trendyol Süper Lig, Ziraat Türkiye Kupası, Şampiyonlar Ligi)
+- ✅ Penaltı skoru (p X-Y) parantez içinde
+- ✅ Scoreboard maçkolik tarzı (Beşiktaş vs Konyaspor MAÇ ÖNÜ - 20:30)
+- ✅ Push notification ikonları (gol/kart/penaltı/düdük dinamik)
+- ✅ EN/TR dil toggle
+- ✅ Cast/AirPlay/Presentation API
+- ✅ Performans: GPU acceleration, will-change, contain
+- ✅ Pre-roll reklam sistemi (oyun trailerları, Play Store/App Store/Huawei/Xiaomi UA-based redirect)
 
-2. **Pre-roll Reklam Sistemi**
-   - SADECE gerçek yayınlarda (TRT, beIN), Trailerlerde yok
-   - ATLAMA YOK - reklam bitince otomatik yayına geçer
-   - Reklam tıklanabilir → Play Store
-
-3. **Lig İsimleri Türkçeleştirme** (formatLeagueName() mapper)
-   - Süper Lig → Trendyol Süper Lig
-   - Turkiye Cup → Ziraat Türkiye Kupası
-   - 1st/2nd Lig → TFF 1./2. Lig
-   - Champions League → Şampiyonlar Ligi
-   - Europa League → Avrupa Ligi
-   - LaLiga → La Liga, Premier League → Premier Lig, vb.
-   - (Turkiye) suffix'i gizlendi
-
-4. **Lig Filtre Butonları**
-   - 1. LİG ve 2. LİG kaldırıldı
-   - TÜRKİYE KUPASI eklendi
-   - Kalan: TÜMÜ, SÜPER LİG, TÜRKİYE KUPASI, ŞAMPİYONLAR LİGİ, SERİE A, BUNDESLIGA, LA LİGA, PREMİER LİG, LIGUE 1
-
-5. **Penaltı Skoru Gösterimi** (p 3-1)
-   - LiveScore API'sinden Trp1/Trp2 okunur
-   - Scoreboard: Samsunspor 0 (p 3) - (p 1) 0 Trabzonspor
-   - Match center: "0 - 0 (p 3-1)"
-   - FT/AP/AET/Pen. durumlarında gösterilir
-
-6. **Bildirim Sistemi Yeniden Yapılandırıldı**
-   - SADECE maç merkezinde görünen maçlar için bildirim (window._renderedMatchKeys filter)
-   - Çeşitlilik: GOL (top ikonu), SARI KART, KIRMIZI KART, PENALTI, MAÇ BAŞLADI, MAÇ YAKLAŞIYOR (30dk), DEVRE ARASI, 2.YARI, MAÇ BİTTİ (p X-Y penaltı dahil)
-   - LiveScore Incs field okunur (IT=6 sarı, IT=7 kırmızı, IT=9 penaltı)
-   - Chrome arka plan bildirimleri aktif (SW push event)
-
-7. **Scoreboard Küçültme**
-   - Desktop: 44px → 36px (skor)
-   - 32px → 26px (separator)
-   - Mobile 768px: 32px → 26px
-   - Mobile 420px: 26px → 22px
-
-8. **Team Name Overflow Fix**
-   - overflow: hidden, text-overflow: ellipsis eklendi
-   - Mobile clamp() fontsize artırıldı
-   - max-width: 100% ayarlandı
-
-9. **AP/AET/Pen. Status**
-   - Hem scoreboard hem match center artık MAÇ SONU gösteriyor
-   - AP ham gösterim yok
-
-10. **Donma Hatası Fix (Çoklu Polling)**
-    - fetchLiveScore çift interval düzeltildi (self-scheduling setTimeout chain)
-    - fetchAllMatches çift poll kaldırıldı
-    - WebSocket ping interval stacking düzeltildi
-    - Freeze overlay çift retry önlendi
-    - Preroll session cancel (kanal değişimi)
-
-11. **Server 3 (EU)** Apple bipbop → Akamai Kopenhag CDN
-
-12. **Sunucu yedekleri distinct** (aynı URL 2x denenmiyor)
-
-## Kanal Stream Kaynakları
-- SİNTEL: `/sintel.mp4` (lokal 4.2MB)
-- TEARS OF STEEL: demo.unified-streaming.com HLS
-- BIG BUCK BUNNY: `/demo3.mp4` (lokal 5MB)
-- TRT 1/HABER/SPOR: medya.trt.com.tr HLS
-- TV 8: daioncdn.net HLS
-- beIN SPORTS 1: backend /api/bein/master.m3u8 proxy
-- Sunucu 3 yedek: Akamai EU Kopenhag
-
-## Bildirim İkonları (8 PNG)
-/icons/goal.png, /icons/redcard.png, /icons/yellowcard.png, /icons/penalty.png, /icons/kickoff.png, /icons/halftime.png, /icons/fulltime.png, /icons/info.png
-
-## Kalan İşler / Backlog (P1)
-- Canlı beIN SPORTS 1 m3u8 URL (kullanıcı sağlayacak)
-- S Sport m3u8 (kullanıcı sağlayacak)
-- Vercel deploy (serverless API dosyaları hazır)
-- app.js refactor (2023 satır → modüller)
-- /app/backend/tests pytest regression dosyaları
+## Kalan Bilinen İşler (Backlog)
+- P0: Kullanıcı sintel/BBB yerine YouTube embed iframe çalışıp çalışmadığını test edecek
+- P1: Sintel TRAILER (eski demo1) Vercel'de çalışıyor olabilir
+- P1: Maç card'a tıklayınca Maçkolik tarzı detay modal (gol/kart/korner istatistik) - GitHub'ta var mı kontrol et
+- P1: Canlı beIN SPORTS 1 m3u8 URL (kullanıcı sağlayacak)
+- P1: S Sport m3u8 (kullanıcı sağlayacak)
+- P2: Vercel'e push (kullanıcı GitHub'a "Save to GitHub" buton ile push edecek, sonra Vercel auto-deploy)
 
 ## Test Credentials
-- Hiçbir auth sistemi yok, kullanıcı bildirim izni tarayıcıdan verecek
+Auth sistemi yok.
+
+## Performans Notları
+- React DOM kullanılmıyor (vanilla JS - daha hızlı)
+- 120Hz cihazlarda akıcı için: transform GPU, will-change, contain, backface-visibility hidden
+- prefers-reduced-motion fallback
+- iPhone 90+ FPS hedefi (refresh rate cihaza bağlı, requestAnimationFrame zaten max FPS verir)

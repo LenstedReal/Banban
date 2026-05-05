@@ -3,6 +3,29 @@
   "public": true,
   "rewrites": [
     { "source": "/api/livescore/today", "destination": "/api/livescore" },
-    { "source": "/api/bein/master.m3u8", "destination": "/api/bein-master" }
+    { "source": "/api/livescore/tomorrow", "destination": "/api/livescore?day=1" },
+    { "source": "/api/livescore/date/:date", "destination": "/api/livescore?date=:date" },
+    { "source": "/api/bein/master.m3u8", "destination": "/api/bein-master" },
+    { "source": "/api/(.*)", "destination": "/api/$1" }
+  ],
+  "headers": [
+    {
+      "source": "/icons/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=86400, immutable" }
+      ]
+    },
+    {
+      "source": "/logos/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=86400, immutable" }
+      ]
+    },
+    {
+      "source": "/(.*)\\.(mp4|webm|m4v)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=604800, immutable" }
+      ]
+    }
   ]
 }

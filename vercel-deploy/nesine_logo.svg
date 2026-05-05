@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" preserveAspectRatio="xMidYMid meet" aria-label="Nesine">
+  <!-- Yellow rounded square background (matches Nesine app icon) -->
+  <rect x="8" y="8" width="224" height="224" rx="42" ry="42" fill="#FFD200"/>
+  <!-- Black stick figure mascot: head + V-arms body -->
+  <g fill="#0E0E0E">
+    <!-- Head (circle) -->
+    <circle cx="120" cy="78" r="22"/>
+    <!-- Body: V-shaped arms + torso, all one shape -->
+    <path d="M120 102
+             L62 178
+             L78 188
+             L120 138
+             L162 188
+             L178 178
+             Z"/>
+    <!-- Legs (small triangle below torso) -->
+    <path d="M120 138 L100 188 L116 188 L120 168 L124 188 L140 188 Z"/>
+  </g>
+</svg>
